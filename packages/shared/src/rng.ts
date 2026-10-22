@@ -13,6 +13,18 @@ export function createRng(seed: number): () => number {
   };
 }
 
+/**
+ * Dérive une graine indépendante pour un usage donné (« schedule », « requests »…), afin que
+ * les différents générateurs d'une même partie ne tirent pas la même suite.
+ */
+export function deriveSeed(seed: number, salt: string): number {
+  let hash = (seed ^ 0x811c9dc5) >>> 0;
+  for (let i = 0; i < salt.length; i++) {
+    hash = Math.imul(hash ^ salt.charCodeAt(i), 0x01000193) >>> 0;
+  }
+  return hash;
+}
+
 export function randomInt(rng: () => number, min: number, max: number): number {
   return min + Math.floor(rng() * (max - min + 1));
 }

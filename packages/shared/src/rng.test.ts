@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { createRng, pick, randomInt, shuffle } from './rng.ts';
+import { createRng, deriveSeed, pick, randomInt, shuffle } from './rng.ts';
+
+describe('deriveSeed', () => {
+  it('est stable et dépend de la graine comme du sel', () => {
+    expect(deriveSeed(1953, 'schedule')).toBe(deriveSeed(1953, 'schedule'));
+    expect(deriveSeed(1953, 'schedule')).not.toBe(deriveSeed(1953, 'requests'));
+    expect(deriveSeed(1953, 'schedule')).not.toBe(deriveSeed(1954, 'schedule'));
+  });
+});
 
 describe('createRng', () => {
   it('produit la même suite pour la même graine', () => {
