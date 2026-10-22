@@ -1,11 +1,16 @@
 import { createApp } from './app.ts';
+import { iceConfigFromEnv } from './ice.ts';
 
 const port = Number(process.env.PORT ?? 3000);
 // Les salles de test (`?dev`) sont ouvertes hors production, ou sur demande explicite.
 const devRooms = process.env.DEV_ROOMS
   ? process.env.DEV_ROOMS === '1'
   : process.env.NODE_ENV !== 'production';
-const server = createApp({ clientDist: process.env.CLIENT_DIST, devRooms });
+const server = createApp({
+  clientDist: process.env.CLIENT_DIST,
+  devRooms,
+  ice: iceConfigFromEnv(process.env),
+});
 
 server.listen(port, () => {
   console.log(`Allô Central : serveur à l'écoute sur le port ${port}`);

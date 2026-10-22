@@ -32,7 +32,11 @@ describe('serveur', () => {
       socket.once('error', reject);
     });
     socket.close();
-    expect(JSON.parse(message)).toEqual({ type: 'welcome', protocolVersion: PROTOCOL_VERSION });
+    expect(JSON.parse(message)).toEqual({
+      type: 'welcome',
+      protocolVersion: PROTOCOL_VERSION,
+      iceServers: [],
+    });
   });
 
   it('crée une salle, lance une journée et envoie la vue du standardiste', async () => {

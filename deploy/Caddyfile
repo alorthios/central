@@ -1,0 +1,7 @@
+# Reverse proxy TLS devant le jeu (profil `remote` de compose.yaml).
+# Caddy obtient et renouvelle seul le certificat Let's Encrypt de $DOMAIN,
+# et relaie le WebSocket /ws sans configuration particulière.
+{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy app:3000
+}

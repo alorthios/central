@@ -16,7 +16,38 @@ Le jeu est servi sur <http://localhost:8053> (port modifiable avec `APP_PORT=xxx
 L'image publiée par le CI est disponible sur `ghcr.io/alorthios/central`.
 
 > Le micro du navigateur n'est accessible qu'en HTTPS ou sur `localhost`. Pour jouer à
-> distance, il faudra un reverse proxy avec TLS devant le conteneur.
+> distance, voir ci-dessous.
+
+## Jouer à distance (HTTPS et TURN)
+
+La voix passe en pair à pair, et le micro exige HTTPS. Le profil `remote` de `compose.yaml`
+ajoute :
+
+- **Caddy**, reverse proxy TLS : certificat Let's Encrypt automatique pour `DOMAIN`
+  (ports 80 et 443) ;
+- **coturn**, relais TURN pour les réseaux qui bloquent le pair à pair (port 3478 en UDP et
+  TCP, relais sur les ports UDP 49160 à 49200, réseau de l'hôte : serveur Linux).
+
+Prérequis : un nom de domaine qui pointe vers le serveur, et ces ports ouverts dans le
+pare-feu. Créer un fichier `.env` à côté de `compose.yaml` :
+
+```sh
+DOMAIN=central.example.org
+TURN_SECRET=<longue chaîne aléatoire, par exemple : openssl rand -hex 32>
+STUN_URLS=stun:central.example.org:3478
+TURN_URLS=turn:central.example.org:3478?transport=udp,turn:central.example.org:3478?transport=tcp
+```
+
+puis :
+
+```sh
+docker compose --profile remote up -d --build
+```
+
+Le jeu est servi sur `https://<DOMAIN>`. Le secret TURN reste sur le serveur : chaque joueur
+reçoit à la connexion des identifiants TURN signés, valables 12 heures (API REST de coturn).
+Sans `TURN_URLS` ni `TURN_SECRET`, la voix ne passe qu'entre machines qui se joignent
+directement ; la ligne 100 reste toujours utilisable par écrit.
 
 ## Développer
 
