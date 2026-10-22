@@ -17,6 +17,8 @@ const SLOW_BLINK_PERIOD_MS = 1_800;
 /** La prise est sous l'ampoule ; une fiche lâchée à moins de ce rayon s'y enfonce. */
 const JACK_OFFSET = 30;
 const JACK_SNAP_RADIUS = 28;
+/** Au doigt, moins précis qu'une souris : on accroche jusqu'à mi-chemin de la prise voisine. */
+export const TOUCH_SNAP_RADIUS = 32;
 
 interface Lamp {
   bulb: LampSkin;
@@ -52,9 +54,9 @@ export class PanelView {
   }
 
   /** La prise la plus proche d'un point, si elle est assez près pour y enfoncer une fiche. */
-  jackAt(x: number, y: number): number | null {
+  jackAt(x: number, y: number, radius = JACK_SNAP_RADIUS): number | null {
     let best: number | null = null;
-    let bestDistance = JACK_SNAP_RADIUS;
+    let bestDistance = radius;
     for (const line of this.lamps.keys()) {
       const jack = this.jackPosition(line);
       const distance = Math.hypot(jack.x - x, jack.y - y);
