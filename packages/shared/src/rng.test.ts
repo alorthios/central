@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createRng, randomInt } from './rng.ts';
+import { createRng, pick, randomInt, shuffle } from './rng.ts';
 
 describe('createRng', () => {
   it('produit la même suite pour la même graine', () => {
@@ -30,5 +30,30 @@ describe('randomInt', () => {
       expect(n).toBeGreaterThanOrEqual(100);
       expect(n).toBeLessThanOrEqual(179);
     }
+  });
+});
+
+describe('pick', () => {
+  it('renvoie un élément de la liste', () => {
+    const rng = createRng(3);
+    for (let i = 0; i < 100; i++) expect(['a', 'b', 'c']).toContain(pick(rng, ['a', 'b', 'c']));
+  });
+
+  it('refuse une liste vide', () => {
+    expect(() => pick(createRng(3), [])).toThrow();
+  });
+});
+
+describe('shuffle', () => {
+  it('garde les mêmes éléments sans modifier la liste source', () => {
+    const source = [1, 2, 3, 4, 5, 6, 7, 8];
+    const shuffled = shuffle(createRng(9), source);
+    expect(source).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+    expect([...shuffled].sort((a, b) => a - b)).toEqual(source);
+  });
+
+  it('est déterministe pour une graine donnée', () => {
+    const source = Array.from({ length: 20 }, (_, i) => i);
+    expect(shuffle(createRng(5), source)).toEqual(shuffle(createRng(5), source));
   });
 });

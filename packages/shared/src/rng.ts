@@ -16,3 +16,18 @@ export function createRng(seed: number): () => number {
 export function randomInt(rng: () => number, min: number, max: number): number {
   return min + Math.floor(rng() * (max - min + 1));
 }
+
+export function pick<T>(rng: () => number, items: readonly T[]): T {
+  if (items.length === 0) throw new Error('pick: liste vide');
+  return items[Math.floor(rng() * items.length)] as T;
+}
+
+/** Mélange de Fisher-Yates ; renvoie une copie. */
+export function shuffle<T>(rng: () => number, items: readonly T[]): T[] {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [copy[i], copy[j]] = [copy[j] as T, copy[i] as T];
+  }
+  return copy;
+}
