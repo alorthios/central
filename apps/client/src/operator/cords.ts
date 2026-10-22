@@ -5,8 +5,9 @@ import {
   type PairView,
   type PlugEnd,
 } from '@allo-central/shared';
-import { Container, type FederatedPointerEvent, Graphics, Rectangle, Text } from 'pixi.js';
+import { Container, type FederatedPointerEvent, Graphics, Rectangle } from 'pixi.js';
 import type { PanelView } from './panel.ts';
+import { type Toggle, skin } from './skin.ts';
 
 const SHELF_GAP = 16;
 const SHELF_HEIGHT = 210;
@@ -15,21 +16,6 @@ const PLUG_SPREAD = 18;
 const PLUG_RADIUS = 10;
 const KEY_TRAVEL = 18;
 const RING_KNOB_MS = 350;
-
-const COLORS = {
-  wood: 0x3a2414,
-  woodEdge: 0x24160c,
-  hole: 0x0a0705,
-  brass: 0xc9a44c,
-  brassDark: 0x8a6d2a,
-  cord: 0x1b130d,
-  cordShine: 0x4a3626,
-  supervisionOn: 0xffb347,
-  supervisionOff: 0x3a2f26,
-  target: 0xfff1cf,
-  label: 0xbfaf92,
-  bakelite: 0x1b130d,
-};
 
 export interface CordActions {
   plug(pair: number, end: PlugEnd, line: number): void;
@@ -43,11 +29,11 @@ interface Plug {
   /** Le trou de la tablette d'où sort le cordon. */
   home: { x: number; y: number };
   sprite: Container;
-  supervision: Graphics;
+  supervision: Toggle;
 }
 
 interface Key {
-  knob: Graphics;
+  knob: Container;
   /** Axe du levier : position de repos. */
   y: number;
   /** Pendant le geste « sonner », le levier reste en bas avant de remonter. */
@@ -77,12 +63,11 @@ export class CordsView {
     const top = panel.height + SHELF_GAP;
     this.height = top + SHELF_HEIGHT;
 
-    const shelf = new Graphics()
-      .roundRect(0, top, panel.width, SHELF_HEIGHT, 18)
-      .fill(COLORS.wood)
-      .stroke({ width: 6, color: COLORS.woodEdge });
+    const shelf = skin.shelf(panel.width, SHELF_HEIGHT);
+    shelf.position.set(0, top);
+    const holes = new Container();
     const sprites = new Container();
-    this.container.addChild(shelf, this.cords, this.target, sprites);
+    this.container.addChild(shelf, holes, this.cords, this.target, sprites);
 
     const pairCount = BALANCE.cordPairs;
     const slot = (panel.width - 2 * SHELF_MARGIN) / pairCount;
@@ -90,18 +75,14 @@ export class CordsView {
       const cx = SHELF_MARGIN + slot * (pair + 0.5);
       for (const end of [0, 1] as const) {
         const home = { x: cx + (end === 0 ? -PLUG_SPREAD : PLUG_SPREAD), y: top + 70 };
-        const supervision = new Graphics().circle(home.x, top + 32, 6).fill(0xffffff);
-        supervision.tint = COLORS.supervisionOff;
-        shelf.circle(home.x, home.y, PLUG_RADIUS + 3).fill(COLORS.hole);
+        const supervision = skin.supervision();
+        supervision.view.position.set(home.x, top + 32);
+        const hole = skin.shelfHole(PLUG_RADIUS);
+        hole.position.set(home.x, home.y);
+        holes.addChild(hole);
 
         const sprite = new Container();
-        sprite.addChild(
-          new Graphics()
-            .circle(0, 0, PLUG_RADIUS)
-            .fill(COLORS.brass)
-            .circle(0, 0, PLUG_RADIUS - 5)
-            .fill(COLORS.brassDark),
-        );
+        sprite.addChild(skin.plug(PLUG_RADIUS));
         sprite.position.set(home.x, home.y);
         sprite.eventMode = 'static';
         sprite.cursor = 'grab';
@@ -109,14 +90,10 @@ export class CordsView {
         sprite.on('pointerdown', (event) => this.startDrag(plug, event));
 
         sprites.addChild(sprite);
-        this.container.addChild(supervision);
+        this.container.addChild(supervision.view);
         this.plugs.push(plug);
       }
-      const label = new Text({
-        text: String(pair + 1),
-        style: { fill: COLORS.label, fontSize: 14, fontFamily: 'ui-monospace, monospace' },
-      });
-      label.anchor.set(0.5, 0);
+      const label = skin.pairLabel(String(pair + 1));
       label.position.set(cx, top + 178);
       this.addKey(pair, cx, top + 128);
       this.container.addChild(label);
@@ -133,7 +110,7 @@ export class CordsView {
     this.pairs = pairs;
     for (const plug of this.plugs) {
       const view = this.plugView(plug);
-      plug.supervision.tint = view?.supervision ? COLORS.supervisionOn : COLORS.supervisionOff;
+      plug.supervision.set(view?.supervision ?? false);
       if (plug !== this.dragging) this.place(plug, view?.line ?? null);
     }
     for (const [pair, key] of this.keys.entries()) {
@@ -149,13 +126,9 @@ export class CordsView {
    * seule au milieu.
    */
   private addKey(pair: number, x: number, y: number): void {
-    const slot = new Graphics()
-      .roundRect(x - 7, y - KEY_TRAVEL - 12, 14, 2 * KEY_TRAVEL + 24, 7)
-      .fill(COLORS.hole);
-    const knob = new Graphics()
-      .roundRect(-14, -9, 28, 18, 6)
-      .fill(COLORS.bakelite)
-      .stroke({ width: 2, color: COLORS.brass });
+    const slot = skin.keySlot(2 * KEY_TRAVEL + 24);
+    slot.position.set(x, y);
+    const knob = skin.keyKnob();
     knob.position.set(x, y);
 
     const hit = new Container();
@@ -222,9 +195,7 @@ export class CordsView {
     this.target.clear();
     if (line !== null) {
       const jack = this.panel.jackPosition(line);
-      this.target
-        .circle(jack.x, jack.y, PLUG_RADIUS + 6)
-        .stroke({ width: 3, color: COLORS.target });
+      skin.drawTarget(this.target, jack.x, jack.y, PLUG_RADIUS + 6);
     }
     this.drawCords();
   }
@@ -260,13 +231,7 @@ export class CordsView {
       const { home } = plug;
       if (Math.hypot(x - home.x, y - home.y) < 1) continue;
       const sag = Math.min(160, 60 + Math.abs(x - home.x) * 0.25);
-      this.cords
-        .moveTo(home.x, home.y)
-        .bezierCurveTo(home.x, home.y - 40, x, y + sag, x, y + PLUG_RADIUS)
-        .stroke({ width: 6, color: COLORS.cord, cap: 'round' })
-        .moveTo(home.x, home.y)
-        .bezierCurveTo(home.x, home.y - 40, x, y + sag, x, y + PLUG_RADIUS)
-        .stroke({ width: 1.5, color: COLORS.cordShine, cap: 'round' });
+      skin.drawCord(this.cords, home, { x, y }, sag, PLUG_RADIUS);
     }
   }
 }

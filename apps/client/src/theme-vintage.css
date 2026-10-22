@@ -1,0 +1,234 @@
+/*
+ * Thème « vintage réaliste » (#53, GDD §16), chargé seulement avec ?theme=vintage.
+ * Bois verni, bakélite, laiton, papier jauni et liège ; machine à écrire pour les documents.
+ * Les textures sont calculées (dégradés et bruit SVG), sans fichier image.
+ */
+:root[data-theme='vintage'] {
+  --paper: #efe3c4;
+  --paper-dark: #d9c79d;
+  --ink: #2a1a0c;
+  --ink-soft: #5b4630;
+  --brass-hi: #f3dc98;
+  --brass: #c49a3e;
+  --brass-lo: #7d5f22;
+  --serif: Georgia, 'Times New Roman', serif;
+  --typewriter: 'Courier New', Courier, 'Nimbus Mono PS', monospace;
+  --noise: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.3 0 0 0 0 0.2 0 0 0 0 0.08 0 0 0 0.22 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  --wood:
+    repeating-linear-gradient(
+      172deg,
+      rgba(30, 12, 4, 0.18) 0 2px,
+      transparent 2px 9px,
+      rgba(190, 120, 60, 0.07) 9px 10px,
+      transparent 10px 23px
+    ),
+    linear-gradient(180deg, #5e3519, #3a1f0e);
+  --bakelite: linear-gradient(180deg, #2c221a 0%, #120d09 55%, #070504 100%);
+}
+
+/* La pièce : un mur sombre au papier peint rayé, la lumière d'une lampe en haut à gauche. */
+:root[data-theme='vintage'] body {
+  background:
+    radial-gradient(ellipse at 25% 0%, rgba(255, 210, 140, 0.12), transparent 60%),
+    repeating-linear-gradient(90deg, rgba(201, 164, 76, 0.04) 0 6px, transparent 6px 18px),
+    linear-gradient(180deg, #2a2017, #100b08);
+  background-attachment: fixed;
+  font-family: var(--serif);
+}
+
+/* Boutons de laiton, champs d'ivoire. */
+:root[data-theme='vintage'] button {
+  border: 1px solid var(--brass-lo) !important;
+  background: linear-gradient(
+    180deg,
+    var(--brass-hi),
+    var(--brass) 55%,
+    var(--brass-lo)
+  ) !important;
+  color: var(--ink) !important;
+  font-family: var(--serif) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 2px 3px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 1px 0 rgba(255, 240, 200, 0.5);
+}
+:root[data-theme='vintage'] button:active {
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.45);
+}
+:root[data-theme='vintage'] button:disabled {
+  filter: grayscale(0.7) brightness(0.8);
+}
+:root[data-theme='vintage'] select,
+:root[data-theme='vintage'] input:not([type='radio']):not([type='checkbox']),
+:root[data-theme='vintage'] textarea {
+  border: 1px solid var(--brass-lo) !important;
+  background: var(--noise), var(--paper) !important;
+  color: var(--ink) !important;
+  font-family: var(--serif) !important;
+}
+
+/* Le bandeau : une planche de bois verni, filet de laiton. */
+:root[data-theme='vintage'] .hud {
+  border-bottom: 2px solid var(--brass);
+  background: var(--noise), var(--wood);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+}
+:root[data-theme='vintage'] .hud .clock {
+  padding: 2px 10px;
+  border: 1px solid var(--brass-lo);
+  border-radius: 4px;
+  background: #0b0806;
+  color: #f6dfa6;
+  font-family: var(--typewriter);
+  font-weight: 700;
+  text-shadow: 0 0 6px rgba(255, 190, 90, 0.45);
+}
+:root[data-theme='vintage'] .hud .status,
+:root[data-theme='vintage'] .hud label,
+:root[data-theme='vintage'] .hud .room,
+:root[data-theme='vintage'] .hud .toggle {
+  color: #e8d6b0;
+}
+:root[data-theme='vintage'] .bell-light {
+  border-color: var(--brass-lo);
+  color: #7d6a50;
+}
+
+/* Le casque : un billet de papier, écrit à la main. */
+:root[data-theme='vintage'] .headset {
+  border: 1px solid var(--paper-dark);
+  border-radius: 3px;
+  background: var(--noise), var(--paper);
+  color: var(--ink);
+  font-family: var(--serif);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.55);
+  transform: translateX(-50%) rotate(-0.4deg);
+}
+
+/* Téléphone, ligne 100 : de la bakélite noire. */
+:root[data-theme='vintage'] .line100,
+:root[data-theme='vintage'] .phone {
+  border: 1px solid #4a3a2a;
+  background: var(--bakelite);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 240, 210, 0.12),
+    0 6px 16px rgba(0, 0, 0, 0.6);
+}
+:root[data-theme='vintage'] .line100.open {
+  border-color: var(--brass);
+  box-shadow:
+    0 0 0 2px rgba(196, 154, 62, 0.4),
+    0 6px 16px rgba(0, 0, 0, 0.6);
+}
+:root[data-theme='vintage'] .phone[data-state='ringing'] {
+  border-color: #c8361e;
+}
+
+/* Les épingles : un tableau de liège, des fiches de papier. */
+:root[data-theme='vintage'] .pins {
+  border: 6px solid #4a2812;
+  background:
+    var(--noise), radial-gradient(circle at 30% 30%, rgba(255, 220, 160, 0.15), transparent 60%),
+    #a5764a;
+  box-shadow:
+    inset 0 2px 6px rgba(0, 0, 0, 0.45),
+    0 6px 16px rgba(0, 0, 0, 0.6);
+}
+:root[data-theme='vintage'] .pins strong {
+  color: #2a1a0c;
+  text-shadow: 0 1px 0 rgba(255, 230, 190, 0.4);
+}
+:root[data-theme='vintage'] .pin {
+  background: var(--noise), var(--paper);
+  box-shadow: 1px 2px 3px rgba(0, 0, 0, 0.45);
+}
+:root[data-theme='vintage'] .pin:nth-child(odd) {
+  transform: rotate(-1deg);
+}
+:root[data-theme='vintage'] .pin:nth-child(even) {
+  transform: rotate(0.8deg);
+}
+:root[data-theme='vintage'] .pins .pin input:not([type='radio']):not([type='checkbox']) {
+  background: transparent !important;
+  border: 0 !important;
+  font-family: var(--typewriter) !important;
+}
+
+/* Le bureau de l'archiviste : du bois, et des documents de papier jauni tapés à la machine. */
+:root[data-theme='vintage'] body:has(.desk) {
+  background: var(--noise), var(--wood);
+  background-attachment: fixed;
+}
+:root[data-theme='vintage'] .paper {
+  border-radius: 2px;
+  background:
+    radial-gradient(ellipse at 85% 10%, rgba(150, 100, 40, 0.12), transparent 45%),
+    radial-gradient(ellipse at 10% 95%, rgba(150, 100, 40, 0.1), transparent 40%), var(--noise),
+    linear-gradient(180deg, #f2e7cb, var(--paper));
+  color: var(--ink);
+  font-family: var(--typewriter);
+  box-shadow:
+    0 1px 0 #fff8e4 inset,
+    2px 8px 22px rgba(0, 0, 0, 0.65);
+}
+:root[data-theme='vintage'] .paper-head {
+  border-bottom-color: var(--ink);
+}
+:root[data-theme='vintage'] .paper-head h3 {
+  font-family: var(--typewriter);
+  letter-spacing: 2px;
+}
+:root[data-theme='vintage'] .directory .line {
+  font-family: var(--typewriter);
+}
+:root[data-theme='vintage'] .directory .address,
+:root[data-theme='vintage'] .card .address,
+:root[data-theme='vintage'] .paper-position {
+  color: var(--ink-soft);
+}
+:root[data-theme='vintage'] .map .street {
+  stroke: #cbb68a;
+}
+:root[data-theme='vintage'] .map text {
+  stroke: #efe3c4;
+}
+:root[data-theme='vintage'] .map .street-name,
+:root[data-theme='vintage'] .map .landmark-name {
+  font-family: var(--serif);
+}
+:root[data-theme='vintage'] .notes textarea {
+  font-family: var(--typewriter) !important;
+}
+:root[data-theme='vintage'] .desk-tab {
+  border-radius: 6px 6px 0 0 !important;
+}
+:root[data-theme='vintage'] .desk-tab[aria-selected='true'] {
+  background: var(--noise), var(--paper) !important;
+}
+
+/* L'accueil, le bilan et la carte mémo : du papier. */
+:root[data-theme='vintage'] .lobby h1 {
+  color: #f3e6c4;
+  font-family: var(--serif);
+  text-shadow: 0 3px 12px rgba(0, 0, 0, 0.7);
+}
+:root[data-theme='vintage'] .lobby .warning,
+:root[data-theme='vintage'] .lobby fieldset label {
+  border-color: var(--brass-lo);
+  background: var(--noise), rgba(239, 227, 196, 0.08);
+}
+:root[data-theme='vintage'] dialog {
+  border: 1px solid var(--paper-dark) !important;
+  background: var(--noise), linear-gradient(180deg, #f2e7cb, var(--paper)) !important;
+  color: var(--ink) !important;
+  font-family: var(--serif);
+  box-shadow: 4px 12px 32px rgba(0, 0, 0, 0.7);
+}
+:root[data-theme='vintage'] dialog dt,
+:root[data-theme='vintage'] dialog .verdict,
+:root[data-theme='vintage'] dialog h3 {
+  color: var(--ink-soft) !important;
+}
+:root[data-theme='vintage'] dialog .stars {
+  color: #9a6c18;
+}
