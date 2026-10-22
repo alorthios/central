@@ -10,9 +10,6 @@ export interface Voice {
   setOpen(open: boolean): void;
 }
 
-/** Les serveurs ICE (STUN, TURN) ; vide, la voix ne passe qu'entre machines joignables. */
-const iceServers: RTCIceServer[] = [];
-
 /**
  * La voix de la ligne 100 (§8.1), en WebRTC pair à pair. Le serveur relaie la signalisation
  * et décide quand la ligne est ouverte : hors de là, le micro est coupé au départ et le
@@ -103,6 +100,8 @@ export function voiceLink(connection: Connection, me: Role): Voice {
   const newPeer = (): RTCPeerConnection => {
     peer?.close();
     pending = [];
+    // STUN et TURN viennent du serveur ; sans eux, la voix ne passe qu'entre machines joignables.
+    const iceServers = connection.last('welcome')?.iceServers ?? [];
     const pc = new RTCPeerConnection({ iceServers });
     peer = pc;
     pc.addEventListener('icecandidate', ({ candidate }) => {

@@ -8,7 +8,7 @@ import type { ArchivistDesk } from './game/desk.ts';
 import type { DayReport } from './game/score.ts';
 import type { ArchivistView, OperatorView } from './game/views.ts';
 
-export const PROTOCOL_VERSION = 8;
+export const PROTOCOL_VERSION = 9;
 
 /** Vitesse maximale du temps de jeu, pour tester une journée sans attendre 10 minutes. */
 export const MAX_SPEED = 60;
@@ -45,8 +45,16 @@ export type RtcSignal =
 export const MAX_SDP_LENGTH = 20_000;
 const MAX_CANDIDATE_LENGTH = 1_000;
 
+/** Un serveur STUN ou TURN, au format de `RTCIceServer`. */
+export interface IceServer {
+  urls: string[];
+  username?: string;
+  credential?: string;
+}
+
 export type ServerMessage =
-  | { type: 'welcome'; protocolVersion: number }
+  /** `iceServers` : pour la voix ; les identifiants TURN sont propres au joueur et éphémères. */
+  | { type: 'welcome'; protocolVersion: number; iceServers: IceServer[] }
   /** `token` permet de reprendre sa place après une déconnexion. */
   | { type: 'roomJoined'; code: string; role: Role; token: string }
   | { type: 'joinRefused'; reason: JoinRefusal }
