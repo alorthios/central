@@ -49,6 +49,11 @@ interface Key {
  */
 export class CordsView {
   readonly container = new Container();
+  /**
+   * Les cordons et leurs fiches, posés au-dessus de tout le reste du plateau (plaques de
+   * numéros comprises) : on les ajoute après le panneau.
+   */
+  readonly top = new Container();
   readonly height: number;
   private readonly panel: PanelView;
   private readonly actions: CordActions;
@@ -72,7 +77,8 @@ export class CordsView {
     shelf.position.set(0, top);
     const holes = new Container();
     const sprites = new Container();
-    this.container.addChild(shelf, holes, this.cords, this.target, sprites);
+    this.container.addChild(shelf, holes);
+    this.top.addChild(this.cords, this.target, sprites);
 
     const pairCount = BALANCE.cordPairs;
     const slot = (panel.width - 2 * SHELF_MARGIN) / pairCount;
@@ -105,10 +111,10 @@ export class CordsView {
     }
 
     // Le geste se suit partout et se termine où qu'on lâche la fiche.
-    this.container.eventMode = 'static';
-    this.container.on('globalpointermove', (event) => this.moveDrag(event));
-    this.container.on('pointerup', (event) => this.endDrag(event));
-    this.container.on('pointerupoutside', (event) => this.endDrag(event));
+    this.top.eventMode = 'static';
+    this.top.on('globalpointermove', (event) => this.moveDrag(event));
+    this.top.on('pointerup', (event) => this.endDrag(event));
+    this.top.on('pointerupoutside', (event) => this.endDrag(event));
   }
 
   update(pairs: PairView[]): void {
@@ -251,7 +257,15 @@ export class CordsView {
       const { home } = plug;
       if (Math.hypot(x - home.x, y - home.y) < 1) continue;
       const sag = Math.min(160, 60 + Math.abs(x - home.x) * 0.25);
-      skin.drawCord(this.cords, home, { x, y }, sag, PLUG_RADIUS);
+      // Fiche de gauche au fil beige clair, fiche de droite au fil brun foncé.
+      skin.drawCord(
+        this.cords,
+        home,
+        { x, y },
+        sag,
+        PLUG_RADIUS,
+        plug.end === 0 ? 'light' : 'dark',
+      );
     }
   }
 }

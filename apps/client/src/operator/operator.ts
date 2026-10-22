@@ -123,7 +123,7 @@ export async function mountOperator(
       connection.send({ type: 'key', pair, action });
     },
   });
-  board.addChild(panel.container, cords.container, panel.labels);
+  board.addChild(panel.container, cords.container, panel.labels, cords.top);
   const lighting = skin.lighting(panel.width, cords.height);
   if (lighting) board.addChild(lighting);
   app.stage.addChild(board);
