@@ -128,6 +128,8 @@ export class Switchboard {
   private upstairsRingingUntil = 0;
   /** Temps cumulé ligne 100 ouverte, pour le bilan (§11). */
   line100Ms = 0;
+  /** Coups de sonnette entendus au rez-de-chaussée, pour le bilan (§11). */
+  bellRings = 0;
 
   constructor(
     onEvent: (event: SwitchboardEvent) => void = () => {},

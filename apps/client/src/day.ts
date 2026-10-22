@@ -17,9 +17,9 @@ export function dayControls(connection: Connection): HTMLElement[] {
   const start = Object.assign(document.createElement('button'), { type: 'button' });
   start.textContent = 'Ouvrir le central';
 
-  // La graine fixe la ville ; sans `?seed`, une ville au hasard pour toute la session.
+  // La salle garde sa ville toute la semaine (§5.3) ; `?seed` en impose une.
   const seedParam = Number.parseInt(params.get('seed') ?? '', 10);
-  const seed = Number.isSafeInteger(seedParam) ? seedParam : Math.floor(Math.random() * 1_000_000);
+  const seed = Number.isSafeInteger(seedParam) ? seedParam : null;
   // `?speed=10` accélère le temps pour tester une journée en une minute.
   const speedParam = Number.parseInt(params.get('speed') ?? '1', 10);
   const speed = Math.min(Math.max(Number.isInteger(speedParam) ? speedParam : 1, 1), MAX_SPEED);

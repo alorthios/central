@@ -43,6 +43,8 @@ export type ServerMessage =
   | { type: 'archivistView'; view: ArchivistView }
   /** Un message texte sur la ligne 100, relayé aux deux joueurs quand elle est ouverte (§8.5). */
   | { type: 'line100Message'; from: Role; text: string; at: number }
+  /** La sonnette de l'étage retentit au rez-de-chaussée. */
+  | { type: 'bell' }
   /** Les documents de l'archiviste, envoyés à lui seul en début de journée. */
   | { type: 'archivistDesk'; desk: ArchivistDesk }
   | { type: 'dayStarted'; seed: number; dayIndex: number; dayName: string }
@@ -60,7 +62,8 @@ export type ClientMessage =
   | { type: 'ping' }
   | { type: 'createRoom'; role: Role }
   | { type: 'joinRoom'; code: string; token: string | null }
-  | { type: 'startDay'; seed: number; dayIndex: number; speed: number }
+  /** `seed` null : la ville de la salle (tirée au premier jour et gardée toute la semaine). */
+  | { type: 'startDay'; seed: number | null; dayIndex: number; speed: number }
   | { type: 'plug'; pair: number; end: PlugEnd; line: number }
   | { type: 'unplug'; pair: number; end: PlugEnd }
   | { type: 'key'; pair: number; action: KeyAction }
@@ -68,7 +71,9 @@ export type ClientMessage =
   /** L'archiviste décroche ou raccroche son combiné. */
   | { type: 'handset'; offHook: boolean }
   /** Un message texte sur la ligne 100 : il ne passe que si la ligne est ouverte. */
-  | { type: 'say'; text: string };
+  | { type: 'say'; text: string }
+  /** Un coup de sonnette de l'archiviste (§8.4). */
+  | { type: 'bell' };
 
 /** Longueur maximale d'un message sur la ligne 100. */
 export const MAX_SAY_LENGTH = 200;
@@ -93,6 +98,8 @@ export function parseClientMessage(raw: string): ClientMessage | null {
       return { type: 'ping' };
     case 'whichOne':
       return { type: 'whichOne' };
+    case 'bell':
+      return { type: 'bell' };
     case 'handset':
       return typeof message.offHook === 'boolean'
         ? { type: 'handset', offHook: message.offHook }
@@ -115,14 +122,15 @@ export function parseClientMessage(raw: string): ClientMessage | null {
       return { type: 'joinRoom', code: normalized, token };
     }
     case 'startDay': {
-      const { seed, dayIndex, speed = 1 } = message;
-      if (!Number.isSafeInteger(seed) || !Number.isInteger(dayIndex)) return null;
+      const { seed = null, dayIndex, speed = 1 } = message;
+      if ((seed !== null && !Number.isSafeInteger(seed)) || !Number.isInteger(dayIndex))
+        return null;
       if ((dayIndex as number) < 0 || (dayIndex as number) >= BALANCE.week.length) return null;
       if (!Number.isInteger(speed) || (speed as number) < 1 || (speed as number) > MAX_SPEED)
         return null;
       return {
         type: 'startDay',
-        seed: seed as number,
+        seed: seed as number | null,
         dayIndex: dayIndex as number,
         speed: speed as number,
       };
