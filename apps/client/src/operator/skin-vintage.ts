@@ -1,5 +1,5 @@
 import { createRng } from '@allo-central/shared';
-import { BlurFilter, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
+import { BlurFilter, CanvasSource, Container, Graphics, Sprite, Texture } from 'pixi.js';
 import { photo } from './photo.ts';
 import type { CordTone, LampColor, LampLevel, Skin } from './skin.ts';
 
@@ -15,16 +15,19 @@ type Draw = (ctx: CanvasRenderingContext2D, w: number, h: number) => void;
 
 const textures = new Map<string, Texture>();
 
-function paint(key: string, w: number, h: number, draw: Draw): Texture {
+function paint(key: string, w: number, h: number, draw: Draw, resolution = RESOLUTION): Texture {
   const cached = textures.get(key);
   if (cached) return cached;
   const canvas = document.createElement('canvas');
-  canvas.width = Math.ceil(w * RESOLUTION);
-  canvas.height = Math.ceil(h * RESOLUTION);
+  canvas.width = Math.ceil(w * resolution);
+  canvas.height = Math.ceil(h * resolution);
   const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
-  ctx.scale(RESOLUTION, RESOLUTION);
+  ctx.scale(resolution, resolution);
   draw(ctx, w, h);
-  const texture = Texture.from(canvas);
+  // Avec ses mipmaps : réduit sur un petit écran, le dessin reste net au lieu de crénelé.
+  const texture = new Texture({
+    source: new CanvasSource({ resource: canvas, autoGenerateMipmaps: true }),
+  });
   textures.set(key, texture);
   return texture;
 }
@@ -182,13 +185,28 @@ const bakelite: Draw = (ctx, w, h) => {
     ctx.fillRect(0, 0, w, h);
     grain(ctx, w, h, 10, 7);
   }
-  // L'ombre portée du cadre de bois sur la face.
-  for (let i = 0; i < 10; i++) {
-    ctx.strokeStyle = `rgba(0, 0, 0, ${0.32 - i * 0.03})`;
-    ctx.lineWidth = 1;
-    ctx.strokeRect(i + 0.5, i + 0.5, w - 2 * i - 1, h - 2 * i - 1);
-  }
+  // L'ombre portée du cadre de bois sur la face, qui suit ses coins arrondis : on remplit
+  // tout l'extérieur de la face, et seule son ombre, floue, déborde à l'intérieur.
+  const k = ctx.getTransform().a;
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(0, 0, w, h, FACE_RADIUS);
+  ctx.clip();
+  ctx.beginPath();
+  ctx.rect(-40, -40, w + 80, h + 80);
+  ctx.roundRect(0, 0, w, h, FACE_RADIUS);
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+  ctx.shadowBlur = 10 * k;
+  ctx.shadowOffsetX = 1.5 * k;
+  ctx.shadowOffsetY = 2.5 * k;
+  ctx.fillStyle = '#000000';
+  ctx.fill('evenodd');
+  ctx.restore();
 };
+
+/** Le rayon des coins de la face du panneau, et celui du cadre de bois. */
+const FACE_RADIUS = 6;
+const FRAME_RADIUS = 10;
 
 /** Un anneau de laiton poli, éclairé d'en haut à gauche. */
 function brassRing(outer: number, inner: number): Draw {
@@ -281,66 +299,120 @@ function glow(radius: number, color: string): Draw {
   };
 }
 
-/** Une plaque d'ivoire gravée, comme les étiquettes des standards d'époque. */
+/**
+ * Les plaques se lisent de près : leur texture suit la densité de l'écran et l'agrandissement
+ * maximal du plateau (1,4), pour que les chiffres restent nets.
+ */
+const PLATE_RESOLUTION = Math.min(4, Math.max(2, Math.ceil((window.devicePixelRatio || 1) * 1.4)));
+
+/**
+ * Une plaque d'ivoire gravée, comme les étiquettes des standards d'époque. Le numéro est
+ * peint avec la plaque, centré sur le dessin des chiffres et non sur la boîte de la police,
+ * et gravé : un liseré clair sous l'encre.
+ */
 function plate(text: string, width: number, fontSize: number, tint: string): Container {
-  const height = fontSize + 5;
-  const texture = paint(`plate:${width}:${fontSize}:${tint}`, width + 4, height + 4, (ctx) => {
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
-    ctx.shadowBlur = 2;
-    ctx.shadowOffsetY = 1;
-    const fill = ctx.createLinearGradient(0, 2, 0, height + 2);
-    fill.addColorStop(0, tint);
-    fill.addColorStop(1, '#c9b78e');
-    ctx.fillStyle = fill;
-    ctx.beginPath();
-    ctx.roundRect(2, 2, width, height, 2);
-    ctx.fill();
-    ctx.shadowColor = 'transparent';
-    ctx.strokeStyle = 'rgba(90, 64, 30, 0.7)';
-    ctx.lineWidth = 0.8;
-    ctx.stroke();
-  });
-  const background = sprite(texture, width + 4, height + 4, false);
-  background.position.set(-(width + 4) / 2, 0);
-  const label = new Text({
-    text,
-    style: { fill: 0x2a1a0c, fontSize, fontFamily: 'Georgia, "Times New Roman", serif' },
-  });
-  label.anchor.set(0.5, 0);
-  label.position.set(0, 3.5);
-  return new Container({ children: [background, label] });
+  const height = fontSize + 6;
+  const w = width + 4;
+  const h = height + 4;
+  const texture = paint(
+    `plate:${text}:${width}:${fontSize}:${tint}`,
+    w,
+    h,
+    (ctx) => {
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
+      ctx.shadowBlur = 2 * PLATE_RESOLUTION;
+      ctx.shadowOffsetY = PLATE_RESOLUTION;
+      const fill = ctx.createLinearGradient(0, 2, 0, height + 2);
+      fill.addColorStop(0, tint);
+      fill.addColorStop(1, '#c9b78e');
+      ctx.fillStyle = fill;
+      ctx.beginPath();
+      ctx.roundRect(2, 2, width, height, 2);
+      ctx.fill();
+      ctx.shadowColor = 'transparent';
+      ctx.strokeStyle = 'rgba(90, 64, 30, 0.7)';
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+      ctx.font = `bold ${fontSize}px Georgia, "Times New Roman", serif`;
+      ctx.textAlign = 'center';
+      const m = ctx.measureText(text);
+      const y = 2 + height / 2 + (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2;
+      ctx.fillStyle = 'rgba(255, 250, 232, 0.5)';
+      ctx.fillText(text, w / 2, y + 0.4);
+      ctx.fillStyle = '#24160a';
+      ctx.fillText(text, w / 2, y);
+    },
+    PLATE_RESOLUTION,
+  );
+  const background = sprite(texture, w, h, false);
+  background.position.set(-w / 2, 0);
+  return new Container({ children: [background] });
 }
 
-/** Une vis de laiton, aux coins du cadre. */
-function screw(): Sprite {
+/** Une vis de laiton à tête fendue, noyée dans le bois ; chacune a sa fente orientée. */
+function screw(angle: number): Sprite {
+  const a = Math.round(angle * 8) / 8;
   return sprite(
-    paint('screw', 14, 14, (ctx) => {
+    paint(`screw:${a}`, 16, 16, (ctx) => {
+      const c = 8;
+      // Le fraisage dans le bois, puis la tête bombée.
       ctx.beginPath();
-      ctx.arc(7, 7, 5.5, 0, Math.PI * 2);
+      ctx.arc(c, c, 6.8, 0, Math.PI * 2);
+      ctx.fillStyle = radial(ctx, c, c, 6.8, [
+        [0.7, 'rgba(0, 0, 0, 0.6)'],
+        [1, 'rgba(0, 0, 0, 0)'],
+      ]);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(c, c, 5.4, 0, Math.PI * 2);
       ctx.fillStyle = radial(
         ctx,
-        7,
-        7,
-        5.5,
+        c,
+        c,
+        5.4,
         [
           [0, '#f5e3a8'],
           [0.6, '#a8873a'],
           [1, '#4d3a12'],
         ],
-        5,
-        4.5,
+        c - 2,
+        c - 2.5,
       );
       ctx.fill();
-      ctx.strokeStyle = 'rgba(40, 28, 8, 0.85)';
-      ctx.lineWidth = 1.2;
+      const dx = Math.cos(a) * 4.4;
+      const dy = Math.sin(a) * 4.4;
+      ctx.lineCap = 'round';
+      ctx.lineWidth = 1.3;
+      ctx.strokeStyle = 'rgba(255, 240, 200, 0.45)';
       ctx.beginPath();
-      ctx.moveTo(3.5, 9);
-      ctx.lineTo(10.5, 5);
+      ctx.moveTo(c - dx, c - dy + 0.7);
+      ctx.lineTo(c + dx, c + dy + 0.7);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(36, 24, 6, 0.9)';
+      ctx.beginPath();
+      ctx.moveTo(c - dx, c - dy);
+      ctx.lineTo(c + dx, c + dy);
       ctx.stroke();
     }),
-    14,
-    14,
+    16,
+    16,
   );
+}
+
+/** Quatre vis, une par coin, à `inset` des bords ; les fentes tournées au hasard de la pose. */
+function screws(width: number, height: number, inset: number, seed: number): Sprite[] {
+  const rng = createRng(seed);
+  const corners = [
+    [inset, inset],
+    [width - inset, inset],
+    [inset, height - inset],
+    [width - inset, height - inset],
+  ] as const;
+  return corners.map(([x, y]) => {
+    const s = screw(rng() * Math.PI);
+    s.position.set(x, y);
+    return s;
+  });
 }
 
 function woodFrame(
@@ -353,17 +425,17 @@ function woodFrame(
   const frame = new Container();
   // L'ombre du meuble sur le mur.
   const shadow = new Graphics()
-    .roundRect(8, 14, width, height, 18)
+    .roundRect(8, 14, width, height, FRAME_RADIUS)
     .fill({ color: 0x000000, alpha: 0.55 });
   shadow.filters = [new BlurFilter({ strength: 14 })];
   const body = sprite(paint(key, width, height, wood(tone, seed)), width, height, false);
-  const mask = new Graphics().roundRect(0, 0, width, height, 18).fill(0xffffff);
+  const mask = new Graphics().roundRect(0, 0, width, height, FRAME_RADIUS).fill(0xffffff);
   body.mask = mask;
   // Arête vernie : claire en haut à gauche, sombre en bas à droite.
   const bevel = new Graphics()
-    .roundRect(1.5, 1.5, width - 3, height - 3, 17)
+    .roundRect(1.5, 1.5, width - 3, height - 3, FRAME_RADIUS - 1)
     .stroke({ width: 3, color: 0xffe2b0, alpha: 0.18 })
-    .roundRect(0, 0, width, height, 18)
+    .roundRect(0, 0, width, height, FRAME_RADIUS)
     .stroke({ width: 2, color: 0x140904, alpha: 0.9 });
   frame.addChild(shadow, body, mask, bevel);
   return frame;
@@ -426,20 +498,11 @@ export const vintageSkin: Skin = {
     );
     face.position.set(margin / 2, margin / 2);
     const faceMask = new Graphics()
-      .roundRect(margin / 2, margin / 2, width - margin, height - margin, 8)
+      .roundRect(margin / 2, margin / 2, width - margin, height - margin, FACE_RADIUS)
       .fill(0xffffff);
     face.mask = faceMask;
-    panel.addChild(face, faceMask);
-    for (const [x, y] of [
-      [margin / 4, margin / 4],
-      [width - margin / 4, margin / 4],
-      [margin / 4, height - margin / 4],
-      [width - margin / 4, height - margin / 4],
-    ] as const) {
-      const s = screw();
-      s.position.set(x, y);
-      panel.addChild(s);
-    }
+    // Les vis au milieu de la bande de bois, dans l'axe de chaque coin.
+    panel.addChild(face, faceMask, ...screws(width, height, margin / 4, 11));
     return panel;
   },
 
@@ -496,7 +559,15 @@ export const vintageSkin: Skin = {
   },
 
   shelf(width, height) {
-    return woodFrame(`shelf:${width}x${height}`, width, height, ['#7a4622', '#43240f'], 1954);
+    const shelf = woodFrame(
+      `shelf:${width}x${height}`,
+      width,
+      height,
+      ['#7a4622', '#43240f'],
+      1954,
+    );
+    shelf.addChild(...screws(width, height, 13, 12));
+    return shelf;
   },
 
   shelfHole(radius) {
@@ -578,7 +649,7 @@ export const vintageSkin: Skin = {
   },
 
   keySlot(height) {
-    const w = 18;
+    const w = 22;
     return sprite(
       paint(`slot:${height}`, w, height, (ctx) => {
         const metal = ctx.createLinearGradient(0, 0, w, 0);
@@ -587,11 +658,11 @@ export const vintageSkin: Skin = {
         metal.addColorStop(1, '#3c3934');
         ctx.fillStyle = metal;
         ctx.beginPath();
-        ctx.roundRect(0, 0, w, height, 8);
+        ctx.roundRect(0, 0, w, height, 10);
         ctx.fill();
         ctx.fillStyle = '#0a0705';
         ctx.beginPath();
-        ctx.roundRect(w / 2 - 3, 6, 6, height - 12, 3);
+        ctx.roundRect(w / 2 - 3.5, 7, 7, height - 14, 3.5);
         ctx.fill();
       }),
       w,
@@ -600,8 +671,8 @@ export const vintageSkin: Skin = {
   },
 
   keyKnob() {
-    const w = 34;
-    const h = 24;
+    const w = 41;
+    const h = 29;
     return sprite(
       paint('knob', w, h, (ctx) => {
         ctx.shadowColor = 'rgba(0, 0, 0, 0.75)';
@@ -613,17 +684,17 @@ export const vintageSkin: Skin = {
         body.addColorStop(1, '#050302');
         ctx.fillStyle = body;
         ctx.beginPath();
-        ctx.roundRect(3, 3, w - 6, h - 6, 6);
+        ctx.roundRect(3, 3, w - 6, h - 6, 7);
         ctx.fill();
         ctx.shadowColor = 'transparent';
         ctx.fillStyle = 'rgba(255, 240, 210, 0.28)';
         ctx.beginPath();
-        ctx.roundRect(6, 5, w - 12, 4, 2);
+        ctx.roundRect(7, 5.5, w - 14, 5, 2.5);
         ctx.fill();
         ctx.strokeStyle = '#b8953f';
-        ctx.lineWidth = 1.2;
+        ctx.lineWidth = 1.4;
         ctx.beginPath();
-        ctx.roundRect(3, 3, w - 6, h - 6, 6);
+        ctx.roundRect(3, 3, w - 6, h - 6, 7);
         ctx.stroke();
       }),
       w,

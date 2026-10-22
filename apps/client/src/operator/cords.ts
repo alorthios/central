@@ -10,12 +10,20 @@ import { type PanelView, TOUCH_SNAP_RADIUS } from './panel.ts';
 import { type Toggle, skin } from './skin.ts';
 
 const SHELF_GAP = 16;
-const SHELF_HEIGHT = 210;
+const SHELF_HEIGHT = 224;
 const SHELF_MARGIN = 36;
 const PLUG_SPREAD = 18;
 const PLUG_RADIUS = 10;
-const KEY_TRAVEL = 18;
+const KEY_TRAVEL = 22;
 const RING_KNOB_MS = 350;
+/**
+ * De haut en bas sur la tablette : les trous d'où sortent les cordons, les lampes de
+ * supervision, les clés, les numéros des paires.
+ */
+const ROW_HOLES = 42;
+const ROW_SUPERVISION = 82;
+const ROW_KEYS = 138;
+const ROW_LABELS = 190;
 /** Au doigt, la fiche se tient au-dessus du doigt, qui sinon la cacherait. */
 const TOUCH_LIFT = 34;
 
@@ -85,9 +93,9 @@ export class CordsView {
     for (let pair = 0; pair < pairCount; pair++) {
       const cx = SHELF_MARGIN + slot * (pair + 0.5);
       for (const end of [0, 1] as const) {
-        const home = { x: cx + (end === 0 ? -PLUG_SPREAD : PLUG_SPREAD), y: top + 70 };
+        const home = { x: cx + (end === 0 ? -PLUG_SPREAD : PLUG_SPREAD), y: top + ROW_HOLES };
         const supervision = skin.supervision();
-        supervision.view.position.set(home.x, top + 32);
+        supervision.view.position.set(home.x, top + ROW_SUPERVISION);
         const hole = skin.shelfHole(PLUG_RADIUS);
         hole.position.set(home.x, home.y);
         holes.addChild(hole);
@@ -105,8 +113,8 @@ export class CordsView {
         this.plugs.push(plug);
       }
       const label = skin.pairLabel(String(pair + 1));
-      label.position.set(cx, top + 178);
-      this.addKey(pair, cx, top + 128);
+      label.position.set(cx, top + ROW_LABELS);
+      this.addKey(pair, cx, top + ROW_KEYS);
       this.container.addChild(label);
     }
 
@@ -137,13 +145,13 @@ export class CordsView {
    * seule au milieu.
    */
   private addKey(pair: number, x: number, y: number): void {
-    const slot = skin.keySlot(2 * KEY_TRAVEL + 24);
+    const slot = skin.keySlot(2 * KEY_TRAVEL + 29);
     slot.position.set(x, y);
     const knob = skin.keyKnob();
     knob.position.set(x, y);
 
     const hit = new Container();
-    hit.hitArea = new Rectangle(x - 24, y - KEY_TRAVEL - 18, 48, 2 * KEY_TRAVEL + 36);
+    hit.hitArea = new Rectangle(x - 29, y - KEY_TRAVEL - 22, 58, 2 * KEY_TRAVEL + 44);
     hit.eventMode = 'static';
     hit.cursor = 'pointer';
     const key: Key = { knob, y, ringingUntil: 0 };

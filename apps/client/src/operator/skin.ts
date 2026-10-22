@@ -153,10 +153,10 @@ export const flatSkin: Skin = {
       .fill(FLAT.brass)
       .circle(0, 0, radius - 5)
       .fill(FLAT.brassDark),
-  keySlot: (height) => new Graphics().roundRect(-7, -height / 2, 14, height, 7).fill(FLAT.hole),
+  keySlot: (height) => new Graphics().roundRect(-8.5, -height / 2, 17, height, 8.5).fill(FLAT.hole),
   keyKnob: () =>
     new Graphics()
-      .roundRect(-14, -9, 28, 18, 6)
+      .roundRect(-17, -11, 34, 22, 7)
       .fill(FLAT.bakelite)
       .stroke({ width: 2, color: FLAT.brass }),
   pairLabel(text) {
