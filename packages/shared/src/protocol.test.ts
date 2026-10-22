@@ -98,6 +98,35 @@ describe('parseClientMessage : salles', () => {
   });
 });
 
+describe('parseClientMessage : signalisation de la voix', () => {
+  it('accepte hello, offre, réponse et candidat ICE', () => {
+    expect(parseClientMessage('{"type":"rtc","signal":{"kind":"hello"}}')).toEqual({
+      type: 'rtc',
+      signal: { kind: 'hello' },
+    });
+    expect(
+      parseClientMessage('{"type":"rtc","signal":{"kind":"offer","id":3,"sdp":"v=0"}}'),
+    ).toEqual({ type: 'rtc', signal: { kind: 'offer', id: 3, sdp: 'v=0' } });
+    const ice = { kind: 'ice', candidate: 'candidate:1 1 udp 1 10.0.0.1 9 typ host', sdpMid: '0' };
+    expect(parseClientMessage(JSON.stringify({ type: 'rtc', signal: ice }))).toEqual({
+      type: 'rtc',
+      signal: { ...ice, sdpMLineIndex: null },
+    });
+  });
+
+  it.each([
+    { kind: 'bye' },
+    { kind: 'offer', id: 1 },
+    { kind: 'offer', sdp: 'v=0' },
+    { kind: 'answer', id: 1, sdp: 'x'.repeat(20_001) },
+    { kind: 'ice', candidate: 42 },
+    { kind: 'ice', candidate: 'c', sdpMLineIndex: 0.5 },
+    null,
+  ])('rejette %j', (signal) => {
+    expect(parseClientMessage(JSON.stringify({ type: 'rtc', signal }))).toBeNull();
+  });
+});
+
 describe('parseClientMessage : ligne 100', () => {
   it('accepte le combiné et les messages, coupés à la longueur maximale', () => {
     expect(parseClientMessage('{"type":"handset","offHook":true}')).toEqual({

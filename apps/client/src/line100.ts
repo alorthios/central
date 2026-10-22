@@ -1,5 +1,6 @@
 import { MAX_SAY_LENGTH, type Role, formatGameTime } from '@allo-central/shared';
 import type { Connection } from './net.ts';
+import { voiceLink } from './voice.ts';
 
 const SPEAKER: Record<Role, string> = { operator: 'Standardiste', archivist: 'Archiviste' };
 
@@ -10,8 +11,8 @@ export interface LineChat {
 }
 
 /**
- * Le mode texte de la ligne 100 (§8.5) : une zone de saisie des deux côtés, aux mêmes
- * conditions que la voix. Le serveur ne relaie un message que si la ligne est ouverte.
+ * La ligne 100 : la voix (§8.1) et son mode texte (§8.5), une zone de saisie des deux côtés
+ * aux mêmes conditions. Le serveur ne relaie un message que si la ligne est ouverte.
  */
 export function lineChat(connection: Connection, me: Role): LineChat {
   const element = document.createElement('section');
@@ -36,7 +37,8 @@ export function lineChat(connection: Connection, me: Role): LineChat {
   const send = Object.assign(document.createElement('button'), { type: 'submit' });
   send.textContent = 'Dire';
   form.append(input, send);
-  element.append(header, log, form);
+  const voice = voiceLink(connection, me);
+  element.append(header, voice.element, log, form);
 
   form.addEventListener('submit', (event) => {
     event.preventDefault();
@@ -62,6 +64,7 @@ export function lineChat(connection: Connection, me: Role): LineChat {
   });
 
   const setOpen = (open: boolean) => {
+    voice.setOpen(open);
     if (element.classList.contains('open') === open) return;
     element.classList.toggle('open', open);
     state.textContent = open ? 'ouverte' : 'fermée';

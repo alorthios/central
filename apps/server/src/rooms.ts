@@ -101,6 +101,11 @@ export class Room {
       this.broadcastState();
       return;
     }
+    // La voix se prépare avant la journée : les signaux passent à l'autre joueur tels quels.
+    if (message.type === 'rtc') {
+      this.send(message, role === 'operator' ? 'archivist' : 'operator');
+      return;
+    }
     if (!this.session) return;
     if (message.type === 'say') {
       this.session.say(role, message.text);
