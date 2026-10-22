@@ -7,20 +7,59 @@
     <style>
       body {
         margin: 0;
+        overflow: hidden;
         background: #17110d;
         color: #f3eada;
         font-family: system-ui, sans-serif;
       }
-      #status {
+      canvas {
+        display: block;
+      }
+      .hud {
         position: fixed;
-        top: 12px;
-        left: 16px;
-        font-size: 14px;
+        inset: 0 0 auto 0;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 16px;
+        min-height: 64px;
+        box-sizing: border-box;
+        padding: 8px 16px;
+        border-bottom: 1px solid #3e2e22;
+        background: #17110dee;
+      }
+      .hud .clock {
+        min-width: 110px;
+        font:
+          600 28px ui-monospace,
+          monospace;
+        color: #c9a44c;
+      }
+      .hud select,
+      .hud button {
+        min-height: 40px;
+        padding: 4px 12px;
+        border: 1px solid #5a4430;
+        border-radius: 6px;
+        background: #221912;
+        color: #f3eada;
+        font: inherit;
+      }
+      .hud button {
+        border-color: #c9a44c;
+        cursor: pointer;
+      }
+      .hud button:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      .hud .status {
+        margin: 0;
+        color: #bfaf92;
       }
     </style>
   </head>
   <body>
-    <div id="status" role="status">Connexion au central…</div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

@@ -1,7 +1,8 @@
 import { createServer, type Server } from 'node:http';
-import { PROTOCOL_VERSION, type ServerMessage } from '@allo-central/shared';
+import { PROTOCOL_VERSION, type ServerMessage, parseClientMessage } from '@allo-central/shared';
 import sirv from 'sirv';
-import { WebSocketServer } from 'ws';
+import { WebSocket, WebSocketServer } from 'ws';
+import { GameSession } from './game/session.ts';
 
 export interface AppOptions {
   /** Dossier du client compilé à servir ; absent en dev, où Vite sert le client. */
@@ -26,8 +27,22 @@ export function createApp({ clientDist }: AppOptions = {}): Server {
 
   const wss = new WebSocketServer({ server, path: '/ws' });
   wss.on('connection', (socket) => {
-    const welcome: ServerMessage = { type: 'welcome', protocolVersion: PROTOCOL_VERSION };
-    socket.send(JSON.stringify(welcome));
+    const send = (message: ServerMessage) => {
+      if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
+    };
+    // Une partie en solo par connexion, en attendant les salles à deux joueurs (#9).
+    let session: GameSession | null = null;
+
+    send({ type: 'welcome', protocolVersion: PROTOCOL_VERSION });
+    socket.on('message', (data) => {
+      const message = parseClientMessage(String(data));
+      if (message?.type === 'startDay') {
+        session?.stop();
+        session = new GameSession({ seed: message.seed, dayIndex: message.dayIndex, send });
+        session.start();
+      }
+    });
+    socket.on('close', () => session?.stop());
   });
   server.on('close', () => wss.close());
 
