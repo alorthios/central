@@ -36,6 +36,9 @@ export function iceServers(config: IceConfig, nowMs = Date.now()): IceServer[] {
   if (config.stunUrls.length > 0) servers.push({ urls: config.stunUrls });
   if (config.turnUrls.length > 0 && config.turnSecret) {
     const username = `${Math.floor(nowMs / 1000) + TURN_TTL_S}:allo-central`;
+    // HMAC-SHA1 est imposé par coturn, qui recalcule ce mot de passe à l'identique : on ne
+    // peut pas en changer sans casser le TURN. Les collisions SHA-1 ne fragilisent pas un
+    // HMAC, et l'identifiant expire au bout de 12 h.
     const credential = createHmac('sha1', config.turnSecret).update(username).digest('base64');
     servers.push({ urls: config.turnUrls, username, credential });
   }
