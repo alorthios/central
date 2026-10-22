@@ -7,9 +7,11 @@ import { type Player, RoomManager } from './rooms.ts';
 export interface AppOptions {
   /** Dossier du client compilé à servir ; absent en dev, où Vite sert le client. */
   clientDist?: string | undefined;
+  /** Ouvre les salles de test du mode développeur (`?dev`). */
+  devRooms?: boolean;
 }
 
-export function createApp({ clientDist }: AppOptions = {}): Server {
+export function createApp({ clientDist, devRooms = false }: AppOptions = {}): Server {
   const serveClient = clientDist ? sirv(clientDist, { single: true }) : undefined;
 
   const server = createServer((req, res) => {
@@ -25,7 +27,7 @@ export function createApp({ clientDist }: AppOptions = {}): Server {
     res.writeHead(404).end();
   });
 
-  const rooms = new RoomManager();
+  const rooms = new RoomManager({ devRooms });
   const wss = new WebSocketServer({ server, path: '/ws' });
   wss.on('connection', (socket) => {
     const player: Player = {

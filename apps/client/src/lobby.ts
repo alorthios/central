@@ -1,4 +1,5 @@
 import type { JoinRefusal, Role } from '@allo-central/shared';
+import { devMode } from './dev.ts';
 import type { Connection } from './net.ts';
 
 export interface Joined {
@@ -9,6 +10,7 @@ export interface Joined {
 const REFUSALS: Record<JoinRefusal, string> = {
   unknownRoom: 'Aucune partie ne porte ce code.',
   roomFull: 'Cette partie a déjà ses deux joueurs.',
+  devDisabled: 'Ce serveur n’ouvre pas de salle de test.',
 };
 
 /** Le jeton de chaque salle, gardé par onglet : recharger la page rend sa place. */
@@ -32,7 +34,8 @@ function saveToken(code: string, token: string): void {
 
 /**
  * L'écran d'accueil (§8.6) : créer une partie en choisissant son rôle, ou en rejoindre une
- * avec son code. `?room=ABCD` rejoint directement, et reprend sa place si on l'avait déjà.
+ * avec son code. `?room=ABCD` rejoint directement, et reprend sa place si on l'avait déjà ;
+ * `?dev` rejoint la salle de test sans passer par l'accueil.
  */
 export function mountLobby(
   root: HTMLElement,
@@ -41,6 +44,7 @@ export function mountLobby(
 ): void {
   const params = new URLSearchParams(location.search);
   const wantedRoom = params.get('room')?.toUpperCase() ?? null;
+  const dev = devMode();
 
   const main = document.createElement('main');
   main.className = 'lobby';
@@ -95,16 +99,22 @@ export function mountLobby(
     switch (message.type) {
       case 'welcome':
         setReady(true);
-        if (wantedRoom) join(wantedRoom);
+        if (dev) {
+          const token = readToken(dev.code);
+          connection.send({ type: 'devRoom', code: dev.code, token, role: dev.role });
+        } else if (wantedRoom) join(wantedRoom);
         break;
       case 'joinRefused':
         error.textContent = REFUSALS[message.reason];
         break;
       case 'roomJoined': {
         saveToken(message.code, message.token);
-        const url = new URL(location.href);
-        url.searchParams.set('room', message.code);
-        history.replaceState(null, '', url);
+        // En mode développeur, l'URL garde `?dev` : recharger rejoint la salle de test.
+        if (!dev) {
+          const url = new URL(location.href);
+          url.searchParams.set('room', message.code);
+          history.replaceState(null, '', url);
+        }
         stop();
         onJoined({ code: message.code, role: message.role });
         break;

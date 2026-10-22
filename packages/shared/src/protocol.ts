@@ -8,7 +8,7 @@ import type { ArchivistDesk } from './game/desk.ts';
 import type { DayReport } from './game/score.ts';
 import type { ArchivistView, OperatorView } from './game/views.ts';
 
-export const PROTOCOL_VERSION = 6;
+export const PROTOCOL_VERSION = 7;
 
 /** Vitesse maximale du temps de jeu, pour tester une journée sans attendre 10 minutes. */
 export const MAX_SPEED = 60;
@@ -22,7 +22,11 @@ export const ROLES: readonly Role[] = ['operator', 'archivist'];
 /** Le siège d'un rôle dans une salle : libre, occupé par un joueur connecté, ou en attente de son retour. */
 export type Presence = 'empty' | 'connected' | 'away';
 
-export type JoinRefusal = 'unknownRoom' | 'roomFull';
+/** `devDisabled` : ce serveur n'ouvre pas de salle de test (en production). */
+export type JoinRefusal = 'unknownRoom' | 'roomFull' | 'devDisabled';
+
+/** La salle de test du mode développeur, quand l'URL n'en nomme pas d'autre. */
+export const DEV_ROOM_CODE = 'TEST';
 
 /** Code de salle : quatre lettres, sans I ni O pour éviter la confusion avec 1 et 0. */
 export const ROOM_CODE_PATTERN = /^[A-HJ-NP-Z]{4}$/;
@@ -63,6 +67,11 @@ export type ClientMessage =
   | { type: 'ping' }
   | { type: 'createRoom'; role: Role }
   | { type: 'joinRoom'; code: string; token: string | null }
+  /**
+   * Mode développeur : rejoint la salle de test `code`, créée au besoin, au rôle demandé
+   * ou au premier rôle libre. Refusé par un serveur de production.
+   */
+  | { type: 'devRoom'; code: string; token: string | null; role: Role | null }
   /** `seed` null : la ville de la salle (tirée au premier jour et gardée toute la semaine). */
   | { type: 'startDay'; seed: number | null; dayIndex: number; speed: number }
   | { type: 'plug'; pair: number; end: PlugEnd; line: number }
@@ -114,13 +123,16 @@ export function parseClientMessage(raw: string): ClientMessage | null {
       const { role } = message;
       return ROLES.includes(role as Role) ? { type: 'createRoom', role: role as Role } : null;
     }
-    case 'joinRoom': {
-      const { code, token } = message;
+    case 'joinRoom':
+    case 'devRoom': {
+      const { code, token, role = null } = message;
       if (typeof code !== 'string') return null;
       const normalized = code.trim().toUpperCase();
       if (!ROOM_CODE_PATTERN.test(normalized)) return null;
       if (token !== null && (typeof token !== 'string' || token.length > 64)) return null;
-      return { type: 'joinRoom', code: normalized, token };
+      if (message.type === 'joinRoom') return { type: 'joinRoom', code: normalized, token };
+      if (role !== null && !ROLES.includes(role as Role)) return null;
+      return { type: 'devRoom', code: normalized, token, role: role as Role | null };
     }
     case 'startDay': {
       const { seed = null, dayIndex, speed = 1 } = message;
