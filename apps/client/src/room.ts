@@ -1,4 +1,5 @@
 import type { Role, ServerMessage } from '@allo-central/shared';
+import { devMode, otherRoleLink } from './dev.ts';
 import type { Joined } from './lobby.ts';
 import type { Connection } from './net.ts';
 
@@ -47,6 +48,7 @@ export function roomBadge(connection: Connection, joined: Joined): HTMLElement {
   partner.className = 'partner';
   partner.setAttribute('role', 'status');
   badge.append(code, copy, partner);
+  if (devMode()) badge.append(otherRoleLink(joined.code, joined.role));
 
   const update = (state: RoomState | undefined) => {
     if (!state) return;

@@ -1,4 +1,5 @@
 import { BALANCE, MAX_SPEED } from '@allo-central/shared';
+import { devMode } from './dev.ts';
 import type { Connection } from './net.ts';
 import { showReport } from './report.ts';
 
@@ -18,11 +19,16 @@ export function dayControls(connection: Connection): HTMLElement[] {
   start.textContent = 'Ouvrir le central';
 
   // La salle garde sa ville toute la semaine (§5.3) ; `?seed` en impose une.
-  const seedParam = Number.parseInt(params.get('seed') ?? '', 10);
-  const seed = Number.isSafeInteger(seedParam) ? seedParam : null;
+  let seed = readSeed(params.get('seed'));
   // `?speed=10` accélère le temps pour tester une journée en une minute.
-  const speedParam = Number.parseInt(params.get('speed') ?? '1', 10);
-  const speed = Math.min(Math.max(Number.isInteger(speedParam) ? speedParam : 1, 1), MAX_SPEED);
+  let speed = readSpeed(params.get('speed'));
+  // En mode développeur, les deux se règlent dans le bandeau.
+  const devFields = devMode()
+    ? devSettings(seed, speed, (newSeed, newSpeed) => {
+        seed = newSeed;
+        speed = newSpeed;
+      })
+    : [];
 
   const startDay = (dayIndex: number) => {
     select.value = String(dayIndex);
@@ -50,5 +56,50 @@ export function dayControls(connection: Connection): HTMLElement[] {
     }
   });
   connection.onClose(() => (start.disabled = true));
-  return [label, select, start];
+  return [label, select, ...devFields, start];
+}
+
+function readSeed(raw: string | null): number | null {
+  const seed = Number.parseInt(raw ?? '', 10);
+  return Number.isSafeInteger(seed) && seed >= 0 ? seed : null;
+}
+
+function readSpeed(raw: string | null): number {
+  const speed = Number.parseInt(raw ?? '1', 10);
+  return Math.min(Math.max(Number.isInteger(speed) ? speed : 1, 1), MAX_SPEED);
+}
+
+/** Les champs « graine » et « vitesse » du mode développeur, pris en compte au lancement. */
+function devSettings(
+  seed: number | null,
+  speed: number,
+  onChange: (seed: number | null, speed: number) => void,
+): HTMLElement[] {
+  const field = (text: string, input: HTMLInputElement) => {
+    const label = document.createElement('label');
+    label.className = 'dev-field';
+    label.append(text, input);
+    return label;
+  };
+  const seedInput = Object.assign(document.createElement('input'), {
+    type: 'number',
+    min: '0',
+    placeholder: 'salle',
+    value: seed === null ? '' : String(seed),
+  });
+  seedInput.title = 'Graine de la ville (vide : celle de la salle)';
+  const speedInput = Object.assign(document.createElement('input'), {
+    type: 'number',
+    min: '1',
+    max: String(MAX_SPEED),
+    value: String(speed),
+  });
+  speedInput.title = `Vitesse de l'horloge (1 à ${MAX_SPEED})`;
+  const update = () => onChange(readSeed(seedInput.value), readSpeed(speedInput.value));
+  seedInput.addEventListener('change', update);
+  speedInput.addEventListener('change', () => {
+    speedInput.value = String(readSpeed(speedInput.value));
+    update();
+  });
+  return [field('Graine', seedInput), field('× ', speedInput)];
 }

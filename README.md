@@ -28,6 +28,12 @@ npm run dev:server   # serveur de jeu sur :3000, rechargé à chaud
 npm run dev:client   # client Vite sur :5173, relaie /ws vers le serveur
 ```
 
+Pour tester seul, ouvrir <http://localhost:5173/?dev> dans deux onglets : le premier prend le
+standard, le second l'étage (ou `?dev&role=archivist`). L'écran d'accueil est sauté, les deux
+onglets rejoignent la salle de test `TEST` (`?dev=ABCD` pour une autre), et le bandeau permet
+de régler la graine de la ville et la vitesse de l'horloge. Ces salles sont refusées quand
+`NODE_ENV=production`, sauf avec `DEV_ROOMS=1`.
+
 | Commande            | Rôle                              |
 | ------------------- | --------------------------------- |
 | `npm test`          | tests (Vitest)                    |

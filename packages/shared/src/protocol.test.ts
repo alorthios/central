@@ -73,8 +73,22 @@ describe('parseClientMessage : salles', () => {
     });
   });
 
+  it('accepte la salle de test, au rôle demandé ou libre', () => {
+    expect(parseClientMessage('{"type":"devRoom","code":"test","token":null}')).toEqual({
+      type: 'devRoom',
+      code: 'TEST',
+      token: null,
+      role: null,
+    });
+    expect(
+      parseClientMessage('{"type":"devRoom","code":"TEST","token":"t","role":"archivist"}'),
+    ).toEqual({ type: 'devRoom', code: 'TEST', token: 't', role: 'archivist' });
+  });
+
   it.each([
     '{"type":"createRoom","role":"meneur"}',
+    '{"type":"devRoom","code":"TEST","token":null,"role":"meneur"}',
+    '{"type":"devRoom","code":"TESTS","token":null}',
     '{"type":"joinRoom","code":"ABC","token":null}',
     '{"type":"joinRoom","code":"ABIO","token":null}',
     '{"type":"joinRoom","code":"ABCD"}',

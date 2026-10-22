@@ -196,6 +196,45 @@ describe('RoomManager', () => {
   });
 });
 
+describe('RoomManager : mode développeur', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('ouvre la salle de test au premier venu, le second prend l’autre rôle', () => {
+    vi.useFakeTimers();
+    const rooms = new RoomManager({ devRooms: true });
+    const alice = player();
+    const bob = player();
+    rooms.handle(alice, { type: 'devRoom', code: 'TEST', token: null, role: null });
+    expect(joined(alice)).toMatchObject({ code: 'TEST', role: 'operator' });
+    rooms.handle(bob, { type: 'devRoom', code: 'TEST', token: null, role: null });
+    expect(joined(bob)).toMatchObject({ code: 'TEST', role: 'archivist' });
+    expect(rooms.size).toBe(1);
+
+    // Un onglet rechargé reprend sa place grâce à son jeton.
+    rooms.leave(alice);
+    const again = player();
+    rooms.handle(again, { type: 'devRoom', code: 'TEST', token: joined(alice).token, role: null });
+    expect(joined(again).role).toBe('operator');
+    rooms.closeAll();
+  });
+
+  it('respecte le rôle demandé', () => {
+    const rooms = new RoomManager({ devRooms: true });
+    const alice = player();
+    rooms.handle(alice, { type: 'devRoom', code: 'ABCD', token: null, role: 'archivist' });
+    expect(joined(alice)).toMatchObject({ code: 'ABCD', role: 'archivist' });
+    rooms.closeAll();
+  });
+
+  it('est refusé par un serveur de production', () => {
+    const rooms = new RoomManager();
+    const alice = player();
+    rooms.handle(alice, { type: 'devRoom', code: 'TEST', token: null, role: null });
+    expect(alice.last('joinRefused')).toEqual({ type: 'joinRefused', reason: 'devDisabled' });
+    expect(rooms.size).toBe(0);
+  });
+});
+
 describe('RoomManager : ligne 100', () => {
   it('relaie le texte seulement ligne ouverte, et seul l’archiviste a le combiné', () => {
     vi.useFakeTimers();

@@ -166,11 +166,21 @@ export class Room {
   }
 }
 
+export interface RoomManagerOptions {
+  /** Ouvre les salles de test du mode développeur (`?dev`), à code fixe. */
+  devRooms?: boolean;
+}
+
 /** Les salles en cours, et la salle de chaque joueur connecté. */
 export class RoomManager {
   private readonly rooms = new Map<string, Room>();
   private readonly roomOf = new Map<Player, Room>();
   private readonly cleanups = new Map<Room, ReturnType<typeof setTimeout>>();
+  private readonly devRooms: boolean;
+
+  constructor({ devRooms = false }: RoomManagerOptions = {}) {
+    this.devRooms = devRooms;
+  }
 
   get size(): number {
     return this.rooms.size;
@@ -193,6 +203,20 @@ export class RoomManager {
         }
         if (this.roomOf.get(player) !== room) this.leave(player);
         this.enter(player, room, message.token);
+        break;
+      }
+      case 'devRoom': {
+        if (!this.devRooms) {
+          player.send({ type: 'joinRefused', reason: 'devDisabled' });
+          return;
+        }
+        let room = this.rooms.get(message.code);
+        if (!room) {
+          room = new Room(message.code);
+          this.rooms.set(room.code, room);
+        }
+        if (this.roomOf.get(player) !== room) this.leave(player);
+        this.enter(player, room, message.token, message.role ?? undefined);
         break;
       }
       default:
@@ -218,7 +242,7 @@ export class RoomManager {
 
   private enter(player: Player, room: Room, token: string | null, role?: Role): void {
     const result = room.join(player, token, role);
-    if (result === 'roomFull' || result === 'unknownRoom') {
+    if (result === 'roomFull' || result === 'unknownRoom' || result === 'devDisabled') {
       player.send({ type: 'joinRefused', reason: result });
       if (room.empty) this.remove(room);
       return;
