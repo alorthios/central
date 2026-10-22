@@ -14,6 +14,8 @@ export {
   type SwitchboardEvent,
 } from './switchboard.ts';
 export {
+  type ArchivistView,
+  archivistView,
   type CapColor,
   type LampState,
   type LampView,

@@ -39,6 +39,18 @@ export interface OperatorView {
   headset: { pair: number | null; hearing: Hearing };
 }
 
+/**
+ * Ce que voit l'archiviste du déroulé de la journée : l'heure, rien du panneau (§4). Ses
+ * documents lui arrivent à part, une fois par journée.
+ */
+export interface ArchivistView {
+  elapsedMs: number;
+}
+
+export function archivistView(board: Switchboard): ArchivistView {
+  return { elapsedMs: Math.round(board.elapsedMs) };
+}
+
 export function operatorView(board: Switchboard): OperatorView {
   const lamps = new Map<number, LampView>();
   const light = (line: number | null, state: LampState, call: LiveCall, caller: boolean) => {
