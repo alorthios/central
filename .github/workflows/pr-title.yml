@@ -36,4 +36,5 @@ jobs:
             archivist
             docker
             deps
+            deps-dev
           requireScope: false

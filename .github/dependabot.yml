@@ -7,6 +7,10 @@ updates:
     commit-message:
       prefix: build
       include: scope
+    ignore:
+      # Les types suivent le runtime (Node 24 LTS) : majeure montée à la main avec .nvmrc.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
     groups:
       dev-tooling:
         dependency-type: development
@@ -24,5 +28,9 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # On reste sur une LTS ; la majeure se change à la main avec .nvmrc.
+      - dependency-name: node
+        update-types: ['version-update:semver-major']
     commit-message:
       prefix: build
