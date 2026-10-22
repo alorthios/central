@@ -1,6 +1,6 @@
 import type { ArchivistView, PhoneState } from '@allo-central/shared';
 import type { Connection } from '../net.ts';
-import { sounds } from '../sounds.ts';
+import { audio, sounds } from '../sounds.ts';
 
 const RING_EVERY_MS = 2_000;
 
@@ -60,6 +60,9 @@ export function phone(connection: Connection): Phone {
   let open = false;
   let lastRing = 0;
   handset.addEventListener('click', () => {
+    // Ce geste réveille le son du navigateur : la voix du standardiste doit s'entendre même
+    // sans avoir activé son propre micro.
+    audio();
     connection.send({ type: 'handset', offHook: current !== 'offHook' });
   });
 

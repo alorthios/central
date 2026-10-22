@@ -36,6 +36,7 @@ DOMAIN=central.example.org
 TURN_SECRET=<longue chaîne aléatoire, par exemple : openssl rand -hex 32>
 STUN_URLS=stun:central.example.org:3478
 TURN_URLS=turn:central.example.org:3478?transport=udp,turn:central.example.org:3478?transport=tcp
+DEV_ROOMS=0
 ```
 
 puis :

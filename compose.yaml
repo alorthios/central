@@ -9,6 +9,8 @@ services:
       STUN_URLS: ${STUN_URLS:-}
       TURN_URLS: ${TURN_URLS:-}
       TURN_SECRET: ${TURN_SECRET:-}
+      # Salles de test `?dev` : ouvertes en local ; mettre DEV_ROOMS=0 sur un serveur public.
+      DEV_ROOMS: ${DEV_ROOMS:-1}
     restart: unless-stopped
 
   # Profil `remote` : HTTPS (le micro l'exige hors localhost) et relais TURN.
