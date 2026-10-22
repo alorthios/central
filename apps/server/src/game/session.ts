@@ -1,6 +1,7 @@
 import {
   BALANCE,
   type CallRequest,
+  type DayConfig,
   type KeyAction,
   type PlugEnd,
   type ScheduledCall,
@@ -11,6 +12,7 @@ import {
   createRng,
   deriveSeed,
   generateRequests,
+  dayReport,
   operatorView,
 } from '@allo-central/shared';
 import { GameClock } from './clock.ts';
@@ -21,6 +23,8 @@ export interface SessionOptions {
   dayIndex: number;
   send: (message: ServerMessage) => void;
   clock?: GameClock;
+  /** Accélération du temps de jeu, quand aucune horloge n'est fournie. */
+  speed?: number;
   tickMs?: number;
 }
 
@@ -40,19 +44,21 @@ export class GameSession {
   private readonly tickMs: number;
   private readonly seed: number;
   private readonly dayIndex: number;
+  private readonly config: DayConfig;
   private timer: ReturnType<typeof setInterval> | null = null;
 
-  constructor({ seed, dayIndex, send, clock, tickMs }: SessionOptions) {
-    const config = BALANCE.week[dayIndex];
+  constructor({ seed, dayIndex, send, clock, speed, tickMs }: SessionOptions) {
+    const config = BALANCE.week[dayIndex] as DayConfig | undefined;
     if (!config) throw new Error(`GameSession : journée ${dayIndex} inconnue`);
     this.seed = seed;
+    this.config = config;
     this.board = new Switchboard(
       (event) => this.notify(event),
       createRng(deriveSeed(seed, `switchboard:${dayIndex}`)),
     );
     this.dayIndex = dayIndex;
     this.send = send;
-    this.clock = clock ?? new GameClock();
+    this.clock = clock ?? new GameClock(undefined, speed);
     this.tickMs = tickMs ?? DEFAULT_TICK_MS;
 
     this.day = new DaySimulation(seed, config, (event) => {
@@ -139,7 +145,7 @@ export class GameSession {
     this.advance();
     this.sendView();
     if (this.day.ended) {
-      this.send({ type: 'dayEnded' });
+      this.send({ type: 'dayEnded', report: dayReport(this.board, this.config) });
       this.stop();
     }
   }

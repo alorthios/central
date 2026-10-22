@@ -4,12 +4,15 @@
  */
 export class GameClock {
   private readonly now: () => number;
+  private readonly speed: number;
   private startedAt: number | null = null;
   private pausedAt: number | null = null;
   private pausedTotal = 0;
 
-  constructor(now: () => number = () => performance.now()) {
+  /** `speed` accélère le temps de jeu : 10 joue une journée en une minute (tests, #27). */
+  constructor(now: () => number = () => performance.now(), speed = 1) {
     this.now = now;
+    this.speed = speed;
   }
 
   get running(): boolean {
@@ -34,6 +37,6 @@ export class GameClock {
   elapsed(): number {
     if (this.startedAt === null) return 0;
     const end = this.pausedAt ?? this.now();
-    return end - this.startedAt - this.pausedTotal;
+    return (end - this.startedAt - this.pausedTotal) * this.speed;
   }
 }

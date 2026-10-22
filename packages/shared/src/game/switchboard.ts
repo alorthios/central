@@ -45,6 +45,8 @@ export interface LiveCall {
   outcome: CallOutcome | null;
   /** Un rappel : l'appel d'origine, dont le client avait été prévenu. */
   callbackOf: number | null;
+  /** Quand le client a été mis en relation ou prévenu : sert au temps moyen par appel (§11). */
+  resolvedAt: number | null;
 }
 
 /** Une extrémité de paire : 0 ou 1. Les deux fiches d'une paire sont identiques (§6.3). */
@@ -155,6 +157,7 @@ export class Switchboard {
       wrongConnections: 0,
       outcome: null,
       callbackOf,
+      resolvedAt: null,
     });
   }
 
@@ -400,6 +403,7 @@ export class Switchboard {
     }
     const { min, max } = BALANCE.conversationMs;
     call.status = 'talking';
+    call.resolvedAt = now;
     call.nextAt = now + min + Math.floor(this.random() * (max - min));
     this.onEvent({ type: 'callConnected', call });
   }
@@ -415,6 +419,7 @@ export class Switchboard {
   private inform(call: LiveCall): void {
     call.status = 'done';
     call.outcome = 'informed';
+    call.resolvedAt = this.elapsed;
     // Le client raccroche : toutes les fiches de sa paire sont à retirer, y compris celle
     // restée sur le correspondant absent.
     const pair = this.pairOf(call);

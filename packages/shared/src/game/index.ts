@@ -1,3 +1,4 @@
+export { type DayReport, type Stars, dayReport, starsFor } from './score.ts';
 export {
   type CallOutcome,
   type CallStatus,

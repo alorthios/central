@@ -1,5 +1,6 @@
 import {
   BALANCE,
+  MAX_SPEED,
   type Hearing,
   type Notice,
   type OperatorView,
@@ -10,6 +11,7 @@ import { Application, Container } from 'pixi.js';
 import { connect } from '../net.ts';
 import { CordsView } from './cords.ts';
 import { PanelView } from './panel.ts';
+import { showReport } from './report.ts';
 import { sounds } from './sounds.ts';
 
 /** Hauteur réservée en haut de l'écran : le bandeau et le casque. */
@@ -166,10 +168,18 @@ export async function mountOperator(root: HTMLElement): Promise<void> {
           sounds.error();
           flash(REFUSALS[message.reason]);
           break;
-        case 'dayEnded':
+        case 'dayEnded': {
           status.textContent = 'Fin de journée : 18 h, le central ferme.';
           start.textContent = 'Reprendre son service';
+          const dayIndex = Number(daySelect.value);
+          const hasNext = !message.report.replay && dayIndex < BALANCE.week.length - 1;
+          showReport(message.report, {
+            replay: () => startDay(dayIndex),
+            // La ville reste la même toute la semaine (§5.3) : même graine.
+            next: hasNext ? () => startDay(dayIndex + 1) : null,
+          });
           break;
+        }
       }
     },
     onClose() {
@@ -178,12 +188,17 @@ export async function mountOperator(root: HTMLElement): Promise<void> {
     },
   });
 
-  start.addEventListener('click', () => {
-    const seed = Number.parseInt(params.get('seed') ?? '', 10);
-    connection.send({
-      type: 'startDay',
-      seed: Number.isSafeInteger(seed) ? seed : Math.floor(Math.random() * 1_000_000),
-      dayIndex: Number(daySelect.value),
-    });
-  });
+  // La graine fixe la ville ; sans `?seed`, une ville au hasard pour toute la session.
+  const seedParam = Number.parseInt(params.get('seed') ?? '', 10);
+  const seed = Number.isSafeInteger(seedParam) ? seedParam : Math.floor(Math.random() * 1_000_000);
+  // `?speed=10` accélère le temps pour tester une journée en une minute.
+  const speedParam = Number.parseInt(params.get('speed') ?? '1', 10);
+  const speed = Math.min(Math.max(Number.isInteger(speedParam) ? speedParam : 1, 1), MAX_SPEED);
+
+  function startDay(dayIndex: number): void {
+    daySelect.value = String(dayIndex);
+    connection.send({ type: 'startDay', seed, dayIndex, speed });
+  }
+
+  start.addEventListener('click', () => startDay(Number(daySelect.value)));
 }

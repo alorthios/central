@@ -4,9 +4,13 @@
  */
 import { BALANCE } from './balance.ts';
 import type { KeyAction, PlugEnd, PlugRefusal } from './game/switchboard.ts';
+import type { DayReport } from './game/score.ts';
 import type { OperatorView } from './game/views.ts';
 
-export const PROTOCOL_VERSION = 5;
+export const PROTOCOL_VERSION = 6;
+
+/** Vitesse maximale du temps de jeu, pour tester une journée sans attendre 10 minutes. */
+export const MAX_SPEED = 60;
 
 /** Ce que le standardiste apprend d'un geste : tonalité d'occupation, personne, protestation. */
 export type Notice = 'busy' | 'absent' | 'wrongNumber';
@@ -19,7 +23,7 @@ export type ServerMessage =
   | { type: 'operatorView'; view: OperatorView }
   | { type: 'plugRefused'; pair: number; end: PlugEnd; line: number; reason: PlugRefusal }
   | { type: 'notice'; notice: Notice; line: number }
-  | { type: 'dayEnded' };
+  | { type: 'dayEnded'; report: DayReport };
 
 /**
  * `startDay` lance une journée en solo, rôle standardiste : c'est provisoire, en attendant
@@ -28,7 +32,7 @@ export type ServerMessage =
  */
 export type ClientMessage =
   | { type: 'ping' }
-  | { type: 'startDay'; seed: number; dayIndex: number }
+  | { type: 'startDay'; seed: number; dayIndex: number; speed: number }
   | { type: 'plug'; pair: number; end: PlugEnd; line: number }
   | { type: 'unplug'; pair: number; end: PlugEnd }
   | { type: 'key'; pair: number; action: KeyAction }
@@ -55,10 +59,17 @@ export function parseClientMessage(raw: string): ClientMessage | null {
     case 'whichOne':
       return { type: 'whichOne' };
     case 'startDay': {
-      const { seed, dayIndex } = message;
+      const { seed, dayIndex, speed = 1 } = message;
       if (!Number.isSafeInteger(seed) || !Number.isInteger(dayIndex)) return null;
       if ((dayIndex as number) < 0 || (dayIndex as number) >= BALANCE.week.length) return null;
-      return { type: 'startDay', seed: seed as number, dayIndex: dayIndex as number };
+      if (!Number.isInteger(speed) || (speed as number) < 1 || (speed as number) > MAX_SPEED)
+        return null;
+      return {
+        type: 'startDay',
+        seed: seed as number,
+        dayIndex: dayIndex as number,
+        speed: speed as number,
+      };
     }
     // Les bornes des paires et des lignes sont vérifiées par le standard lui-même.
     case 'plug': {
