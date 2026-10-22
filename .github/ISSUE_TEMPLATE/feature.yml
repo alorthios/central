@@ -1,0 +1,36 @@
+name: Fonctionnalité
+description: Une mécanique, un écran ou un outil à construire
+labels: ['type: feature']
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Objectif
+      description: Ce que le joueur (ou le développeur) peut faire une fois que c'est livré.
+    validations:
+      required: true
+  - type: input
+    id: gdd
+    attributes:
+      label: Référence GDD
+      description: Section(s) du game design document concernée(s).
+      placeholder: '§6.4 Les clés'
+  - type: dropdown
+    id: role
+    attributes:
+      label: Rôle concerné
+      options:
+        - Standardiste
+        - Archiviste
+        - Les deux
+        - Infrastructure
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Critères d'acceptation
+      value: |
+        - [ ]
+    validations:
+      required: true

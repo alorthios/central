@@ -1,0 +1,39 @@
+name: PR title
+
+# Les PR sont fusionnées en squash : leur titre devient le message de commit sur main,
+# il doit donc suivre Conventional Commits.
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  conventional:
+    name: Conventional title
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            perf
+            refactor
+            test
+            docs
+            build
+            ci
+            chore
+          scopes: |
+            shared
+            server
+            client
+            operator
+            archivist
+            docker
+            deps
+          requireScope: false

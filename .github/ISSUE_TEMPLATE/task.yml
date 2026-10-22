@@ -1,0 +1,16 @@
+name: Tâche technique
+description: Refactoring, outillage, CI, dette technique
+labels: ['type: chore']
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: Quoi et pourquoi
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Fini quand
+      value: |
+        - [ ]
