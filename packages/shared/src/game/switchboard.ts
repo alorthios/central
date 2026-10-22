@@ -74,7 +74,13 @@ export interface CordPair {
 /** Ce qu'on entend dans le casque, clé levée. */
 export type Hearing =
   | { kind: 'silence' }
-  | { kind: 'client'; lines: string[]; askedWhichOne: boolean }
+  | {
+      kind: 'client';
+      lines: string[];
+      askedWhichOne: boolean;
+      /** Timbre de la voix « charabia » de ce client (§9.4) : propre à chaque abonné. */
+      voice: number;
+    }
   | { kind: 'ringback' }
   | { kind: 'conversation' }
   | { kind: 'informed'; reason: Unreachable }
@@ -354,7 +360,12 @@ export class Switchboard {
         }
         return {
           pair: pair.id,
-          hearing: { kind: 'client', lines, askedWhichOne: call.askedWhichOne },
+          hearing: {
+            kind: 'client',
+            lines,
+            askedWhichOne: call.askedWhichOne,
+            voice: call.callerLine,
+          },
         };
       }
       case 'connecting':

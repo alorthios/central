@@ -4,6 +4,9 @@
  */
 let context: AudioContext | null = null;
 
+/** Au-delà, le client a tout dit : on n'allonge pas le charabia indéfiniment. */
+const MAX_BABBLE_LETTERS = 90;
+
 function audio(): AudioContext | null {
   try {
     context ??= new AudioContext();
@@ -108,6 +111,46 @@ export const sounds = {
       oscillator.connect(gain).connect(ctx.destination);
       oscillator.start();
       oscillator.stop(ctx.currentTime + 1.5);
+    }
+  },
+  /**
+   * La voix « charabia » d'un client (§9.4) : une syllabe par lettre, sur un timbre propre
+   * à l'abonné. On comprend le ton, pas les mots : le texte est dans la bulle.
+   */
+  babble(text: string, voice: number): void {
+    const ctx = audio();
+    if (!ctx) return;
+    // Le timbre : une hauteur de base et une couleur de voyelle tirées du numéro de l'abonné.
+    const base = 110 + ((voice * 37) % 150);
+    const formantShift = ((voice * 53) % 7) * 60;
+    const letters = [...text.toLowerCase()].slice(0, MAX_BABBLE_LETTERS);
+    let t = ctx.currentTime + 0.05;
+    for (const [i, letter] of letters.entries()) {
+      if (!/\p{L}|\d/u.test(letter)) {
+        // Ponctuation et espaces : de petites pauses, plus longues en fin de phrase.
+        t += /[.!?…]/.test(letter) ? 0.18 : 0.04;
+        continue;
+      }
+      const code = letter.codePointAt(0) ?? 97;
+      const vowel = 'aeiouyéèêàâîôû'.includes(letter);
+      const oscillator = ctx.createOscillator();
+      oscillator.type = 'sawtooth';
+      // La phrase descend un peu, comme une intonation.
+      oscillator.frequency.value =
+        base * (1 + ((code % 5) - 2) * 0.06) * (1 - (i / letters.length) * 0.12);
+      const formant = ctx.createBiquadFilter();
+      formant.type = 'bandpass';
+      formant.frequency.value = (vowel ? 700 : 1_500) + formantShift + (code % 4) * 90;
+      formant.Q.value = 4;
+      const gain = ctx.createGain();
+      const length = vowel ? 0.075 : 0.05;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.35, t + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + length);
+      oscillator.connect(formant).connect(gain).connect(ctx.destination);
+      oscillator.start(t);
+      oscillator.stop(t + length);
+      t += length + 0.012;
     }
   },
   /** Tonalité d'erreur : la prise refuse la fiche (§8.3). */
