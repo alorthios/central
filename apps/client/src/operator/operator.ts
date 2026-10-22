@@ -1,10 +1,36 @@
-import { BALANCE, type PlugRefusal, formatGameTime } from '@allo-central/shared';
+import {
+  BALANCE,
+  type Hearing,
+  type OperatorView,
+  type PlugRefusal,
+  formatGameTime,
+} from '@allo-central/shared';
 import { Application, Container } from 'pixi.js';
 import { connect } from '../net.ts';
 import { CordsView } from './cords.ts';
 import { PanelView } from './panel.ts';
+import { sounds } from './sounds.ts';
 
-const HUD_HEIGHT = 64;
+/** Hauteur réservée en haut de l'écran : le bandeau et le casque. */
+const HUD_HEIGHT = 112;
+
+function hearingText(hearing: Hearing): string {
+  switch (hearing.kind) {
+    case 'client':
+      return `« ${hearing.text} »`;
+    case 'ringback':
+      return 'Ça sonne chez le correspondant…';
+    case 'conversation':
+      return 'Ils se parlent. Vous pouvez rabaisser la clé.';
+    case 'silence':
+      return 'Silence sur la ligne.';
+  }
+}
+
+function headsetText({ headset }: OperatorView): string {
+  if (headset.pair === null) return 'Casque : levez une clé pour écouter une paire.';
+  return `Casque, paire ${headset.pair + 1} : ${hearingText(headset.hearing)}`;
+}
 
 const REFUSALS: Record<PlugRefusal, string> = {
   jackBusy: 'Cette prise est déjà occupée.',
@@ -34,16 +60,30 @@ export async function mountOperator(root: HTMLElement): Promise<void> {
   const label = Object.assign(document.createElement('label'), { htmlFor: 'day' });
   label.textContent = 'Journée';
   hud.append(clock, label, daySelect, start, status);
+  const headset = Object.assign(document.createElement('p'), { className: 'headset' });
+  headset.setAttribute('aria-live', 'polite');
+  headset.textContent = 'Casque : levez une clé pour écouter une paire.';
 
   const app = new Application();
   await app.init({ resizeTo: window, background: '#17110d', antialias: true });
-  root.replaceChildren(hud, app.canvas);
+  root.replaceChildren(hud, headset, app.canvas);
 
   const board = new Container();
   const panel = new PanelView();
   const cords = new CordsView(panel, {
-    plug: (pair, end, line) => connection.send({ type: 'plug', pair, end, line }),
-    unplug: (pair, end) => connection.send({ type: 'unplug', pair, end }),
+    plug(pair, end, line) {
+      sounds.plug();
+      connection.send({ type: 'plug', pair, end, line });
+    },
+    unplug(pair, end) {
+      sounds.unplug();
+      connection.send({ type: 'unplug', pair, end });
+    },
+    key(pair, action) {
+      sounds.clac();
+      if (action === 'ring') sounds.ring();
+      connection.send({ type: 'key', pair, action });
+    },
   });
   board.addChild(panel.container, cords.container, panel.labels);
   app.stage.addChild(board);
@@ -88,8 +128,13 @@ export async function mountOperator(root: HTMLElement): Promise<void> {
           panel.update(message.view);
           cords.update(message.view.pairs);
           clock.textContent = formatGameTime(message.view.elapsedMs);
+          // Le casque est annoncé aux lecteurs d'écran : ne le réécrire que s'il change.
+          if (headset.textContent !== headsetText(message.view)) {
+            headset.textContent = headsetText(message.view);
+          }
           break;
         case 'plugRefused':
+          sounds.error();
           flash(REFUSALS[message.reason]);
           break;
         case 'dayEnded':

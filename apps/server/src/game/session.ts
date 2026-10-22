@@ -1,11 +1,14 @@
 import {
   BALANCE,
   type CallRequest,
+  type KeyAction,
   type PlugEnd,
   type ScheduledCall,
   type ServerMessage,
   Switchboard,
   generateCity,
+  createRng,
+  deriveSeed,
   generateRequests,
   operatorView,
 } from '@allo-central/shared';
@@ -28,7 +31,7 @@ const DEFAULT_TICK_MS = 200;
  * patience, et chaque tick envoie au standardiste la vue de son panneau.
  */
 export class GameSession {
-  readonly board = new Switchboard();
+  readonly board: Switchboard;
   private readonly day: DaySimulation;
   private readonly requests: CallRequest[];
   private readonly clock: GameClock;
@@ -42,6 +45,7 @@ export class GameSession {
     const config = BALANCE.week[dayIndex];
     if (!config) throw new Error(`GameSession : journée ${dayIndex} inconnue`);
     this.seed = seed;
+    this.board = new Switchboard(undefined, createRng(deriveSeed(seed, `switchboard:${dayIndex}`)));
     this.dayIndex = dayIndex;
     this.send = send;
     this.clock = clock ?? new GameClock();
@@ -82,6 +86,13 @@ export class GameSession {
     this.advance();
     const reason = this.board.plug(pair, end, line);
     if (reason) this.send({ type: 'plugRefused', pair, end, line, reason });
+    this.sendView();
+  }
+
+  key(pair: number, action: KeyAction): void {
+    if (!this.running) return;
+    this.advance();
+    this.board.setKey(pair, action);
     this.sendView();
   }
 

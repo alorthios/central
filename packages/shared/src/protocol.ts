@@ -3,10 +3,10 @@
  * Chaque joueur ne reçoit que la vue de son rôle.
  */
 import { BALANCE } from './balance.ts';
-import type { PlugEnd, PlugRefusal } from './game/switchboard.ts';
+import type { KeyAction, PlugEnd, PlugRefusal } from './game/switchboard.ts';
 import type { OperatorView } from './game/views.ts';
 
-export const PROTOCOL_VERSION = 3;
+export const PROTOCOL_VERSION = 4;
 
 export type Role = 'operator' | 'archivist';
 
@@ -26,9 +26,12 @@ export type ClientMessage =
   | { type: 'ping' }
   | { type: 'startDay'; seed: number; dayIndex: number }
   | { type: 'plug'; pair: number; end: PlugEnd; line: number }
-  | { type: 'unplug'; pair: number; end: PlugEnd };
+  | { type: 'unplug'; pair: number; end: PlugEnd }
+  | { type: 'key'; pair: number; action: KeyAction };
 
 const isEnd = (value: unknown): value is PlugEnd => value === 0 || value === 1;
+const isKeyAction = (value: unknown): value is KeyAction =>
+  value === 'talk' || value === 'rest' || value === 'ring';
 
 /** Lit un message client ; tout ce qui n'est pas conforme est rejeté (null). */
 export function parseClientMessage(raw: string): ClientMessage | null {
@@ -60,6 +63,11 @@ export function parseClientMessage(raw: string): ClientMessage | null {
       const { pair, end } = message;
       if (!Number.isInteger(pair) || !isEnd(end)) return null;
       return { type: 'unplug', pair: pair as number, end };
+    }
+    case 'key': {
+      const { pair, action } = message;
+      if (!Number.isInteger(pair) || !isKeyAction(action)) return null;
+      return { type: 'key', pair: pair as number, action };
     }
     default:
       return null;

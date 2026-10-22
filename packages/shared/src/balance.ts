@@ -12,6 +12,8 @@ export const BALANCE = {
   onHoldPatienceRate: 0.5,
   ringsBeforeAbsent: 3,
   ringIntervalMs: 2_000,
+  /** Un correspondant présent décroche au bout d'une ou deux sonneries. */
+  answerRings: { min: 1, max: 2 },
   longDistanceSetupMs: { min: 20_000, max: 40_000 },
   bell: { minIntervalMs: 600, resonanceMs: 1_500 },
   peakShare: 0.6,

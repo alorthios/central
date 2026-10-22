@@ -1,12 +1,14 @@
-import { BALANCE, type PairView, type PlugEnd } from '@allo-central/shared';
-import { Container, type FederatedPointerEvent, Graphics, Text } from 'pixi.js';
+import { BALANCE, type KeyAction, type PairView, type PlugEnd } from '@allo-central/shared';
+import { Container, type FederatedPointerEvent, Graphics, Rectangle, Text } from 'pixi.js';
 import type { PanelView } from './panel.ts';
 
 const SHELF_GAP = 16;
-const SHELF_HEIGHT = 150;
+const SHELF_HEIGHT = 210;
 const SHELF_MARGIN = 36;
 const PLUG_SPREAD = 18;
 const PLUG_RADIUS = 10;
+const KEY_TRAVEL = 18;
+const RING_KNOB_MS = 350;
 
 const COLORS = {
   wood: 0x3a2414,
@@ -20,11 +22,13 @@ const COLORS = {
   supervisionOff: 0x3a2f26,
   target: 0xfff1cf,
   label: 0xbfaf92,
+  bakelite: 0x1b130d,
 };
 
 export interface CordActions {
   plug(pair: number, end: PlugEnd, line: number): void;
   unplug(pair: number, end: PlugEnd): void;
+  key(pair: number, action: KeyAction): void;
 }
 
 interface Plug {
@@ -34,6 +38,14 @@ interface Plug {
   home: { x: number; y: number };
   sprite: Container;
   supervision: Graphics;
+}
+
+interface Key {
+  knob: Graphics;
+  /** Axe du levier : position de repos. */
+  y: number;
+  /** Pendant le geste « sonner », le levier reste en bas avant de remonter. */
+  ringingUntil: number;
 }
 
 /**
@@ -49,6 +61,7 @@ export class CordsView {
   private readonly cords = new Graphics();
   private readonly target = new Graphics();
   private readonly plugs: Plug[] = [];
+  private readonly keys: Key[] = [];
   private pairs: PairView[] = [];
   private dragging: Plug | null = null;
 
@@ -98,7 +111,8 @@ export class CordsView {
         style: { fill: COLORS.label, fontSize: 14, fontFamily: 'ui-monospace, monospace' },
       });
       label.anchor.set(0.5, 0);
-      label.position.set(cx, top + 100);
+      label.position.set(cx, top + 178);
+      this.addKey(pair, cx, top + 128);
       this.container.addChild(label);
     }
 
@@ -116,7 +130,54 @@ export class CordsView {
       plug.supervision.tint = view?.supervision ? COLORS.supervisionOn : COLORS.supervisionOff;
       if (plug !== this.dragging) this.place(plug, view?.line ?? null);
     }
+    for (const [pair, key] of this.keys.entries()) {
+      if (performance.now() < key.ringingUntil) continue;
+      this.placeKnob(key, this.pairs[pair]?.key === 'talk' ? 'talk' : 'rest');
+    }
     this.drawCords();
+  }
+
+  /**
+   * La clé d'une paire (§6.4) : un levier à trois positions. Cliquer au-dessus de son axe
+   * lève ou rabaisse la clé (parler) ; en dessous, on l'abaisse pour sonner et elle revient
+   * seule au milieu.
+   */
+  private addKey(pair: number, x: number, y: number): void {
+    const slot = new Graphics()
+      .roundRect(x - 7, y - KEY_TRAVEL - 12, 14, 2 * KEY_TRAVEL + 24, 7)
+      .fill(COLORS.hole);
+    const knob = new Graphics()
+      .roundRect(-14, -9, 28, 18, 6)
+      .fill(COLORS.bakelite)
+      .stroke({ width: 2, color: COLORS.brass });
+    knob.position.set(x, y);
+
+    const hit = new Container();
+    hit.hitArea = new Rectangle(x - 24, y - KEY_TRAVEL - 18, 48, 2 * KEY_TRAVEL + 36);
+    hit.eventMode = 'static';
+    hit.cursor = 'pointer';
+    const key: Key = { knob, y, ringingUntil: 0 };
+    hit.on('pointerdown', (event) => {
+      const local = this.container.toLocal(event.global);
+      if (local.y < y) {
+        const action = this.pairs[pair]?.key === 'talk' ? 'rest' : 'talk';
+        this.placeKnob(key, action);
+        this.actions.key(pair, action);
+      } else {
+        key.ringingUntil = performance.now() + RING_KNOB_MS;
+        this.placeKnob(key, 'ring');
+        this.actions.key(pair, 'ring');
+        setTimeout(() => this.placeKnob(key, this.pairs[pair]?.key ?? 'rest'), RING_KNOB_MS);
+      }
+    });
+
+    this.container.addChild(slot, knob, hit);
+    this.keys.push(key);
+  }
+
+  private placeKnob(key: Key, position: KeyAction): void {
+    const offset = position === 'talk' ? -KEY_TRAVEL : position === 'ring' ? KEY_TRAVEL : 0;
+    key.knob.position.y = key.y + offset;
   }
 
   private plugView(plug: Plug) {
