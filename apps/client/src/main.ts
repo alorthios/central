@@ -1,5 +1,8 @@
 import { mountLobby } from './lobby.ts';
 import { connect } from './net.ts';
+import { applyTheme } from './theme.ts';
+
+applyTheme();
 
 if (new URLSearchParams(location.search).has('debug')) {
   // Chargée à part : le code de debug ne pèse pas sur la page de jeu.

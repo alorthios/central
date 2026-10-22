@@ -57,7 +57,7 @@
       }
       .headset {
         position: fixed;
-        top: 64px;
+        top: var(--hud-height, 64px);
         left: 50%;
         transform: translateX(-50%);
         box-sizing: border-box;
@@ -217,7 +217,7 @@
       .desk {
         box-sizing: border-box;
         min-height: 100vh;
-        padding: 128px 16px 24px;
+        padding: calc(var(--hud-height, 64px) + 64px) 16px 24px;
       }
       .desk {
         --desk-scale: 1;

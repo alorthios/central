@@ -30,7 +30,7 @@ export function otherRoleLink(code: string, me: Role): HTMLAnchorElement {
   url.search = '';
   url.searchParams.set('dev', code);
   url.searchParams.set('role', other);
-  for (const keep of ['seed', 'speed']) {
+  for (const keep of ['seed', 'speed', 'theme']) {
     const value = params.get(keep);
     if (value) url.searchParams.set(keep, value);
   }

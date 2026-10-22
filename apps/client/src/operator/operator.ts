@@ -7,6 +7,7 @@ import {
 } from '@allo-central/shared';
 import { Application, Container } from 'pixi.js';
 import { dayControls } from '../day.ts';
+import { trackHudHeight } from '../hud.ts';
 import type { Joined } from '../lobby.ts';
 import { lineChat } from '../line100.ts';
 import type { Connection } from '../net.ts';
@@ -14,10 +15,8 @@ import { memoButton } from '../help.ts';
 import { roomBadge } from '../room.ts';
 import { CordsView } from './cords.ts';
 import { PanelView } from './panel.ts';
+import { skin } from './skin.ts';
 import { sounds } from '../sounds.ts';
-
-/** Hauteur réservée en haut de l'écran : le bandeau et le casque. */
-const HUD_HEIGHT = 112;
 
 const UNREACHABLE = { busy: 'occupé', absent: 'absent' } as const;
 
@@ -100,7 +99,7 @@ export async function mountOperator(
   headset.append(heard, whichOne);
 
   const app = new Application();
-  await app.init({ resizeTo: window, background: '#17110d', antialias: true });
+  await app.init({ resizeTo: window, background: skin.background, antialias: true });
   const chat = lineChat(connection, 'operator');
   root.replaceChildren(hud, headset, app.canvas, chat.element);
 
@@ -122,22 +121,34 @@ export async function mountOperator(
     },
   });
   board.addChild(panel.container, cords.container, panel.labels);
+  const lighting = skin.lighting(panel.width, cords.height);
+  if (lighting) board.addChild(lighting);
   app.stage.addChild(board);
 
+  // Le décor derrière le plateau suit la taille de la fenêtre.
+  let backdrop: Container | null = null;
+  let reserved = 112;
   const layout = () => {
+    backdrop?.destroy({ children: true });
+    backdrop = skin.backdrop(app.screen.width, app.screen.height);
+    if (backdrop) app.stage.addChildAt(backdrop, 0);
     const scale = Math.min(
       (app.screen.width - 32) / panel.width,
-      (app.screen.height - HUD_HEIGHT - 32) / cords.height,
+      (app.screen.height - reserved - 32) / cords.height,
       1.4,
     );
     board.scale.set(scale);
     board.position.set(
       (app.screen.width - panel.width * scale) / 2,
-      HUD_HEIGHT + (app.screen.height - HUD_HEIGHT - cords.height * scale) / 2,
+      reserved + (app.screen.height - reserved - cords.height * scale) / 2,
     );
   };
   app.renderer.on('resize', layout);
-  layout();
+  // La place réservée en haut : le bandeau (sa hauteur réelle) et le casque dessous.
+  trackHudHeight(hud, (height) => {
+    reserved = height + headset.offsetHeight + 16;
+    layout();
+  });
   app.ticker.add(() => panel.animate(performance.now()));
 
   let dayStatus = 'Le central est fermé.';

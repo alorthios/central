@@ -1,5 +1,6 @@
 import { formatGameTime } from '@allo-central/shared';
 import { dayControls } from '../day.ts';
+import { trackHudHeight } from '../hud.ts';
 import type { Joined } from '../lobby.ts';
 import { lineChat } from '../line100.ts';
 import type { Connection } from '../net.ts';
@@ -44,6 +45,7 @@ export function mountArchivist(root: HTMLElement, connection: Connection, joined
   side.className = 'side';
   side.append(pinBoard(joined.code), bellButton(connection), handset.element, chat.element);
   root.replaceChildren(hud, desk, side);
+  trackHudHeight(hud);
 
   const onDayStarted = (message: { dayName: string; seed: number }) => {
     status.textContent = `${message.dayName} · ville n° ${message.seed}`;
