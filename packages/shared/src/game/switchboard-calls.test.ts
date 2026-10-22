@@ -61,6 +61,7 @@ describe('Switchboard : clés (§6.4)', () => {
         kind: 'client',
         lines: ["Passez-moi le 134, s'il vous plaît."],
         askedWhichOne: false,
+        voice: 141,
       },
     });
     expect(operatorView(board).pairs[0]?.key).toBe('talk');
@@ -275,6 +276,7 @@ describe('Switchboard : situations (§6.5)', () => {
       kind: 'client',
       lines: ["M. Henry, s'il vous plaît.", "Celui qui s'appelle Léon."],
       askedWhichOne: true,
+      voice: 141,
     });
   });
 });

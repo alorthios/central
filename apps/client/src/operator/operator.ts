@@ -76,7 +76,14 @@ export async function mountOperator(
   const bell = Object.assign(document.createElement('span'), { className: 'bell-light' });
   bell.textContent = 'Sonnette';
   bell.setAttribute('aria-hidden', 'true');
-  hud.append(clock, ...dayControls(connection), status, bell, roomBadge(connection, joined));
+  hud.append(
+    clock,
+    ...dayControls(connection),
+    status,
+    bell,
+    voiceToggle(),
+    roomBadge(connection, joined),
+  );
 
   const headset = Object.assign(document.createElement('div'), { className: 'headset' });
   const heard = document.createElement('p');
@@ -160,6 +167,7 @@ export async function mountOperator(
           heard.textContent = headsetText(message.view);
         }
         whichOne.hidden = !canAskWhichOne(message.view);
+        speak(message.view.headset.hearing);
         chat.setOpen(message.view.line100Open);
         break;
       case 'notice':
@@ -184,4 +192,53 @@ export async function mountOperator(
     }
   });
   connection.onClose(() => (status.textContent = 'Déconnecté du central. Rechargez la page.'));
+}
+
+const VOICES_KEY = 'allo-central:voices';
+let voicesOn = true;
+try {
+  voicesOn = localStorage.getItem(VOICES_KEY) !== 'off';
+} catch {
+  // Sans stockage, les voix restent actives.
+}
+
+/** La case « Voix des clients » : le charabia est désactivable (§9.4). */
+function voiceToggle(): HTMLElement {
+  const label = document.createElement('label');
+  label.className = 'toggle';
+  const box = Object.assign(document.createElement('input'), {
+    type: 'checkbox',
+    checked: voicesOn,
+  });
+  box.addEventListener('change', () => {
+    voicesOn = box.checked;
+    try {
+      localStorage.setItem(VOICES_KEY, voicesOn ? 'on' : 'off');
+    } catch {
+      // Le réglage vaut pour la page.
+    }
+  });
+  label.append(box, ' Voix des clients');
+  return label;
+}
+
+let spoken: { voice: number; lines: string[] } | null = null;
+
+/**
+ * Le client parle quand on l'entend de nouveau : à la clé levée, puis seulement ce qu'il
+ * ajoute (la précision de « Lequel ? »).
+ */
+function speak(hearing: Hearing): void {
+  if (hearing.kind !== 'client') {
+    spoken = null;
+    return;
+  }
+  const previous = spoken;
+  spoken = { voice: hearing.voice, lines: hearing.lines };
+  if (!voicesOn) return;
+  const continues =
+    previous?.voice === hearing.voice &&
+    previous.lines.every((line, i) => hearing.lines[i] === line);
+  const fresh = continues ? hearing.lines.slice(previous.lines.length) : hearing.lines;
+  if (fresh.length > 0) sounds.babble(fresh.join(' '), hearing.voice);
 }
