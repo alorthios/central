@@ -21,6 +21,7 @@ import {
 } from '@allo-central/shared';
 import { GameClock } from './clock.ts';
 import { DaySimulation } from './day.ts';
+import { Journal } from './journal.ts';
 
 export interface SessionOptions {
   seed: number;
@@ -56,6 +57,10 @@ export class GameSession {
   private timer: ReturnType<typeof setInterval> | null = null;
   private readonly now: () => number;
   private lastBellAt = -Infinity;
+  private readonly journal = new Journal();
+  private line100WasOpen = false;
+  /** Appels déjà examinés par `watch` : parmi les suivants, les rappels entrent au journal. */
+  private knownCalls = 0;
 
   constructor({ seed, dayIndex, send, clock, speed, tickMs, now }: SessionOptions) {
     const config = BALANCE.week[dayIndex] as DayConfig | undefined;
@@ -74,7 +79,13 @@ export class GameSession {
 
     this.day = new DaySimulation(seed, config, (event) => {
       if (event.type === 'callArrived') {
-        this.board.receive(event.call, this.requests[event.call.id] as CallRequest);
+        const request = this.requests[event.call.id] as CallRequest;
+        this.board.receive(event.call, request);
+        this.journal.add(event.call.at, 'appel_recu', {
+          call: event.call.id,
+          line: event.call.callerLine,
+          detail: `${request.type} ${event.call.kind} vers ${request.targetLine}`,
+        });
       }
     });
     this.city = generateCity(seed);
@@ -151,18 +162,58 @@ export class GameSession {
     this.sendView();
   }
 
-  /** Ce que le standardiste entend d'un geste, au-delà de ce que montre le panneau. */
+  /**
+   * Chaque événement du standard entre au journal ; certains s'entendent aussi au
+   * rez-de-chaussée, au-delà de ce que montre le panneau.
+   */
   private notify(event: SwitchboardEvent): void {
-    if (event.type === 'callUnreachable') {
-      this.send({ type: 'notice', notice: event.reason, line: event.call.callerLine }, 'operator');
-    } else if (event.type === 'wrongConnection') {
-      this.send({ type: 'notice', notice: 'wrongNumber', line: event.line }, 'operator');
+    const at = this.board.elapsedMs;
+    if (event.type === 'upstairsRinging') {
+      this.journal.add(at, 'etage_sonne', { line: 100 });
+      return;
+    }
+    const { call } = event;
+    const fields = { call: call.id, line: call.callerLine };
+    switch (event.type) {
+      case 'callAnswered':
+        this.journal.add(at, 'reponse', fields);
+        break;
+      case 'whichOneAsked':
+        this.journal.add(at, 'lequel', fields);
+        break;
+      case 'callConnected':
+        this.journal.add(at, 'mise_en_relation', { ...fields, detail: `${call.connectedLine}` });
+        break;
+      case 'callCompleted':
+        this.journal.add(at, 'fin_conversation', fields);
+        break;
+      case 'callInformed':
+        this.journal.add(at, 'client_prevenu', { ...fields, detail: call.unreachable ?? '' });
+        break;
+      case 'callLost':
+        this.journal.add(at, 'appel_perdu', { ...fields, detail: event.reason });
+        break;
+      case 'callUnreachable':
+        this.journal.add(
+          at,
+          `correspondant_${event.reason === 'busy' ? 'occupe' : 'absent'}`,
+          fields,
+        );
+        this.send({ type: 'notice', notice: event.reason, line: call.callerLine }, 'operator');
+        break;
+      case 'wrongConnection':
+        this.journal.add(at, 'mauvais_correspondant', { ...fields, detail: `${event.line}` });
+        this.send({ type: 'notice', notice: 'wrongNumber', line: event.line }, 'operator');
+        break;
     }
   }
 
   handset(offHook: boolean): void {
     if (!this.running) return;
     this.advance();
+    if (offHook !== this.board.handsetOffHook) {
+      this.journal.add(this.board.elapsedMs, offHook ? 'combine_decroche' : 'combine_raccroche');
+    }
     this.board.setHandset(offHook);
     this.sendView();
   }
@@ -178,6 +229,7 @@ export class GameSession {
     if (now - this.lastBellAt < BALANCE.bell.minIntervalMs) return;
     this.lastBellAt = now;
     this.board.bellRings++;
+    this.journal.add(this.clock.elapsed(), 'sonnette');
     this.send({ type: 'bell' }, 'operator');
   }
 
@@ -185,6 +237,7 @@ export class GameSession {
     if (!this.running) return;
     this.advance();
     if (!this.board.line100Open()) return;
+    this.journal.add(this.board.elapsedMs, 'message_ligne100', { detail: `${from}: ${text}` });
     this.send({ type: 'line100Message', from, text, at: Math.round(this.board.elapsedMs) });
   }
 
@@ -210,8 +263,28 @@ export class GameSession {
     this.day.advanceTo(elapsed);
   }
 
+  /** Ce qui change sans événement propre : la ligne 100 qui s'ouvre ou se ferme, les rappels. */
+  private watch(): void {
+    const at = this.board.elapsedMs;
+    const open = this.board.line100Open();
+    if (open !== this.line100WasOpen) {
+      this.line100WasOpen = open;
+      this.journal.add(at, open ? 'ligne100_ouverte' : 'ligne100_fermee', { line: 100 });
+    }
+    for (const call of this.board.calls.slice(this.knownCalls)) {
+      if (call.callbackOf === null) continue;
+      this.journal.add(call.arrivedAt, 'rappel_recu', {
+        call: call.id,
+        line: call.callerLine,
+        detail: `rappel de l'appel ${call.callbackOf}`,
+      });
+    }
+    this.knownCalls = this.board.calls.length;
+  }
+
   /** Chaque joueur ne reçoit que la vue de son rôle. */
   private sendView(): void {
+    this.watch();
     this.send({ type: 'operatorView', view: operatorView(this.board) }, 'operator');
     this.send({ type: 'archivistView', view: archivistView(this.board) }, 'archivist');
   }
@@ -220,7 +293,11 @@ export class GameSession {
     this.advance();
     this.sendView();
     if (this.day.ended) {
-      this.send({ type: 'dayEnded', report: dayReport(this.board, this.config) });
+      const report = dayReport(this.board, this.config);
+      this.journal.add(this.board.elapsedMs, 'fin_journee', {
+        detail: `${Math.round(report.serviceRate * 100)} % servis, ${report.stars} étoile(s)`,
+      });
+      this.send({ type: 'dayEnded', report, journal: this.journal.toCsv() });
       this.stop();
     }
   }

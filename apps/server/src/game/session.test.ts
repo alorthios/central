@@ -119,3 +119,26 @@ describe('GameSession', () => {
     expect(() => new GameSession({ seed: 1, dayIndex: 99, send: () => {} })).toThrow();
   });
 });
+
+describe('GameSession : journal', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('envoie en fin de journée le journal CSV de chaque appel', () => {
+    const { session, messages } = start(0);
+    const call = session.schedule[0];
+    if (!call) throw new Error('planning vide');
+    vi.advanceTimersByTime(call.at + 100);
+    session.plug(0, 0, call.callerLine);
+    vi.advanceTimersByTime(BALANCE.dayDurationMs);
+
+    const ended = messages.at(-1);
+    if (ended?.type !== 'dayEnded') throw new Error('pas de fin de journée');
+    const rows = ended.journal.trim().split('\r\n');
+    expect(rows[0]).toBe('heure;ms;evenement;appel;ligne;detail');
+    const events = rows.slice(1).map((row) => row.split(';')[2]);
+    expect(events.filter((e) => e === 'appel_recu')).toHaveLength(session.schedule.length);
+    expect(events).toContain('reponse');
+    expect(events.at(-1)).toBe('fin_journee');
+  });
+});
