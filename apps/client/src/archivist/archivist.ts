@@ -3,6 +3,7 @@ import { dayControls } from '../day.ts';
 import type { Joined } from '../lobby.ts';
 import { lineChat } from '../line100.ts';
 import type { Connection } from '../net.ts';
+import { memoButton } from '../help.ts';
 import { roomBadge } from '../room.ts';
 import { notesPage, pinBoard } from './board.ts';
 import { renderDesk } from './desk.ts';
@@ -20,7 +21,13 @@ export function mountArchivist(root: HTMLElement, connection: Connection, joined
   const status = Object.assign(document.createElement('p'), { className: 'status' });
   status.setAttribute('role', 'status');
   status.textContent = 'Les archives sont fermées.';
-  hud.append(clock, ...dayControls(connection), status, roomBadge(connection, joined));
+  hud.append(
+    clock,
+    ...dayControls(connection),
+    status,
+    memoButton('archivist'),
+    roomBadge(connection, joined),
+  );
 
   const desk = document.createElement('main');
   desk.className = 'desk';
