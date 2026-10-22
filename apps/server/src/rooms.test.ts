@@ -83,6 +83,9 @@ describe('RoomManager', () => {
     expect(types(bob)).toContain('archivistView');
     expect(types(bob)).not.toContain('operatorView');
     expect(types(bob)).toContain('dayStarted');
+    // Les documents de l'archiviste ne descendent jamais au rez-de-chaussée.
+    expect(types(bob)).toContain('archivistDesk');
+    expect(types(alice)).not.toContain('archivistDesk');
   });
 
   it('seul le standardiste touche au panneau', () => {

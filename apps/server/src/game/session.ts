@@ -1,6 +1,7 @@
 import {
   BALANCE,
   type CallRequest,
+  type City,
   type DayConfig,
   type KeyAction,
   type PlugEnd,
@@ -14,6 +15,7 @@ import {
   deriveSeed,
   generateRequests,
   dayReport,
+  archivistDesk,
   archivistView,
   operatorView,
 } from '@allo-central/shared';
@@ -42,6 +44,7 @@ export class GameSession {
   readonly board: Switchboard;
   private readonly day: DaySimulation;
   private readonly requests: CallRequest[];
+  private readonly city: City;
   private readonly clock: GameClock;
   private readonly send: (message: ServerMessage, to?: Role) => void;
   private readonly tickMs: number;
@@ -69,7 +72,8 @@ export class GameSession {
         this.board.receive(event.call, this.requests[event.call.id] as CallRequest);
       }
     });
-    this.requests = generateRequests(seed, generateCity(seed), this.day.schedule, config);
+    this.city = generateCity(seed);
+    this.requests = generateRequests(seed, this.city, this.day.schedule, config);
   }
 
   get schedule(): readonly ScheduledCall[] {
@@ -83,6 +87,7 @@ export class GameSession {
   start(): void {
     if (this.timer) return;
     this.send(this.dayStarted());
+    this.send(this.desk(), 'archivist');
     this.clock.start();
     this.timer = setInterval(() => this.tick(), this.tickMs);
     this.tick();
@@ -96,7 +101,12 @@ export class GameSession {
   /** Un joueur revient en pleine journée : il retrouve l'annonce de la journée et sa vue. */
   rejoin(role: Role): void {
     this.send(this.dayStarted(), role);
+    if (role === 'archivist') this.send(this.desk(), 'archivist');
     this.sendView();
+  }
+
+  private desk(): ServerMessage {
+    return { type: 'archivistDesk', desk: archivistDesk(this.city, this.config) };
   }
 
   private dayStarted(): ServerMessage {

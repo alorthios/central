@@ -1,3 +1,12 @@
+export {
+  type ArchivistDesk,
+  type DirectoryEntry,
+  type MapData,
+  type ProfessionCard,
+  archivistDesk,
+  formatAddress,
+  streetLabel,
+} from './desk.ts';
 export { type DayReport, type Stars, dayReport, starsFor } from './score.ts';
 export {
   type CallOutcome,
