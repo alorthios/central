@@ -6,7 +6,10 @@ import { BALANCE } from './balance.ts';
 import type { KeyAction, PlugEnd, PlugRefusal } from './game/switchboard.ts';
 import type { OperatorView } from './game/views.ts';
 
-export const PROTOCOL_VERSION = 4;
+export const PROTOCOL_VERSION = 5;
+
+/** Ce que le standardiste apprend d'un geste : tonalité d'occupation, personne, protestation. */
+export type Notice = 'busy' | 'absent' | 'wrongNumber';
 
 export type Role = 'operator' | 'archivist';
 
@@ -15,6 +18,7 @@ export type ServerMessage =
   | { type: 'dayStarted'; seed: number; dayIndex: number; dayName: string }
   | { type: 'operatorView'; view: OperatorView }
   | { type: 'plugRefused'; pair: number; end: PlugEnd; line: number; reason: PlugRefusal }
+  | { type: 'notice'; notice: Notice; line: number }
   | { type: 'dayEnded' };
 
 /**
@@ -27,7 +31,8 @@ export type ClientMessage =
   | { type: 'startDay'; seed: number; dayIndex: number }
   | { type: 'plug'; pair: number; end: PlugEnd; line: number }
   | { type: 'unplug'; pair: number; end: PlugEnd }
-  | { type: 'key'; pair: number; action: KeyAction };
+  | { type: 'key'; pair: number; action: KeyAction }
+  | { type: 'whichOne' };
 
 const isEnd = (value: unknown): value is PlugEnd => value === 0 || value === 1;
 const isKeyAction = (value: unknown): value is KeyAction =>
@@ -47,6 +52,8 @@ export function parseClientMessage(raw: string): ClientMessage | null {
   switch (message.type) {
     case 'ping':
       return { type: 'ping' };
+    case 'whichOne':
+      return { type: 'whichOne' };
     case 'startDay': {
       const { seed, dayIndex } = message;
       if (!Number.isSafeInteger(seed) || !Number.isInteger(dayIndex)) return null;

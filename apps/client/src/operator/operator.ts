@@ -1,6 +1,7 @@
 import {
   BALANCE,
   type Hearing,
+  type Notice,
   type OperatorView,
   type PlugRefusal,
   formatGameTime,
@@ -14,17 +15,31 @@ import { sounds } from './sounds.ts';
 /** Hauteur réservée en haut de l'écran : le bandeau et le casque. */
 const HUD_HEIGHT = 112;
 
+const UNREACHABLE = { busy: 'occupé', absent: 'absent' } as const;
+
 function hearingText(hearing: Hearing): string {
   switch (hearing.kind) {
     case 'client':
-      return `« ${hearing.text} »`;
+      return `« ${hearing.lines.join(' … ')} »`;
     case 'ringback':
       return 'Ça sonne chez le correspondant…';
     case 'conversation':
       return 'Ils se parlent. Vous pouvez rabaisser la clé.';
+    case 'informed':
+      return `Vous prévenez le client (${UNREACHABLE[hearing.reason]}) : « Bon, je rappellerai. »`;
     case 'silence':
       return 'Silence sur la ligne.';
   }
+}
+
+const NOTICES: Record<Notice, string> = {
+  busy: 'Tonalité d’occupation : levez la clé pour prévenir le client.',
+  absent: 'Personne ne répond : levez la clé pour prévenir le client, ou sonnez encore.',
+  wrongNumber: 'Le client proteste : ce n’est pas la bonne personne !',
+};
+
+function canAskWhichOne({ headset }: OperatorView): boolean {
+  return headset.hearing.kind === 'client' && !headset.hearing.askedWhichOne;
 }
 
 function headsetText({ headset }: OperatorView): string {
@@ -60,9 +75,17 @@ export async function mountOperator(root: HTMLElement): Promise<void> {
   const label = Object.assign(document.createElement('label'), { htmlFor: 'day' });
   label.textContent = 'Journée';
   hud.append(clock, label, daySelect, start, status);
-  const headset = Object.assign(document.createElement('p'), { className: 'headset' });
-  headset.setAttribute('aria-live', 'polite');
-  headset.textContent = 'Casque : levez une clé pour écouter une paire.';
+  const headset = Object.assign(document.createElement('div'), { className: 'headset' });
+  const heard = document.createElement('p');
+  heard.setAttribute('aria-live', 'polite');
+  heard.textContent = 'Casque : levez une clé pour écouter une paire.';
+  // « Lequel ? » (§6.5) : une précision du client, contre un peu de sa patience.
+  const whichOne = Object.assign(document.createElement('button'), { type: 'button' });
+  whichOne.textContent = 'Lequel ?';
+  whichOne.title = 'Demander une précision au client (il perd 10 s de patience)';
+  whichOne.hidden = true;
+  whichOne.addEventListener('click', () => connection.send({ type: 'whichOne' }));
+  headset.append(heard, whichOne);
 
   const app = new Application();
   await app.init({ resizeTo: window, background: '#17110d', antialias: true });
@@ -129,9 +152,15 @@ export async function mountOperator(root: HTMLElement): Promise<void> {
           cords.update(message.view.pairs);
           clock.textContent = formatGameTime(message.view.elapsedMs);
           // Le casque est annoncé aux lecteurs d'écran : ne le réécrire que s'il change.
-          if (headset.textContent !== headsetText(message.view)) {
-            headset.textContent = headsetText(message.view);
+          if (heard.textContent !== headsetText(message.view)) {
+            heard.textContent = headsetText(message.view);
           }
+          whichOne.hidden = !canAskWhichOne(message.view);
+          break;
+        case 'notice':
+          if (message.notice === 'busy') sounds.busy();
+          else sounds.error();
+          flash(NOTICES[message.notice]);
           break;
         case 'plugRefused':
           sounds.error();

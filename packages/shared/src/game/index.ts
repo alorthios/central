@@ -1,5 +1,7 @@
 export {
+  type CallOutcome,
   type CallStatus,
+  type Unreachable,
   type CordPair,
   type Hearing,
   type KeyAction,

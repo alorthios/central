@@ -14,6 +14,12 @@ export const BALANCE = {
   ringIntervalMs: 2_000,
   /** Un correspondant présent décroche au bout d'une ou deux sonneries. */
   answerRings: { min: 1, max: 2 },
+  /** Hypothèse : part des correspondants absents quand on les appelle (§6.5). */
+  absentShare: 0.1,
+  /** Hypothèse : patience perdue quand le client tombe sur le mauvais correspondant. */
+  wrongNumberPenaltyMs: 10_000,
+  /** Un client prévenu (absent, occupé) rappelle plus tard (annexe C1.3). */
+  callbackDelayMs: 90_000,
   longDistanceSetupMs: { min: 20_000, max: 40_000 },
   bell: { minIntervalMs: 600, resonanceMs: 1_500 },
   peakShare: 0.6,

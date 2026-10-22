@@ -85,6 +85,12 @@ export const sounds = {
     if (!ctx) return;
     for (let i = 0; i < 16; i++) tone(ctx, i % 2 ? 480 : 440, i * 0.05, 0.05, 0.12);
   },
+  /** Tonalité d'occupation : le correspondant est déjà en ligne (§6.5). */
+  busy(): void {
+    const ctx = audio();
+    if (!ctx) return;
+    for (let i = 0; i < 4; i++) tone(ctx, 425, i * 0.5, 0.25, 0.15);
+  },
   /** Tonalité d'erreur : la prise refuse la fiche (§8.3). */
   error(): void {
     const ctx = audio();

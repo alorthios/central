@@ -1,4 +1,10 @@
-import { BALANCE, type KeyAction, type PairView, type PlugEnd } from '@allo-central/shared';
+import {
+  BALANCE,
+  type KeyAction,
+  type KeyPosition,
+  type PairView,
+  type PlugEnd,
+} from '@allo-central/shared';
 import { Container, type FederatedPointerEvent, Graphics, Rectangle, Text } from 'pixi.js';
 import type { PanelView } from './panel.ts';
 
@@ -159,11 +165,17 @@ export class CordsView {
     const key: Key = { knob, y, ringingUntil: 0 };
     hit.on('pointerdown', (event) => {
       const local = this.container.toLocal(event.global);
+      // L'état local des clés suit le geste sans attendre la vue du serveur : un second
+      // clic rapide doit partir de la position qu'on vient de donner, pas de l'ancienne.
       if (local.y < y) {
         const action = this.pairs[pair]?.key === 'talk' ? 'rest' : 'talk';
+        if (action === 'talk') for (const other of this.pairs) other.key = 'rest';
+        this.setLocalKey(pair, action);
         this.placeKnob(key, action);
         this.actions.key(pair, action);
       } else {
+        // La clé abaissée pour sonner revient seule au milieu (§6.4).
+        this.setLocalKey(pair, 'rest');
         key.ringingUntil = performance.now() + RING_KNOB_MS;
         this.placeKnob(key, 'ring');
         this.actions.key(pair, 'ring');
@@ -173,6 +185,11 @@ export class CordsView {
 
     this.container.addChild(slot, knob, hit);
     this.keys.push(key);
+  }
+
+  private setLocalKey(pair: number, position: KeyPosition): void {
+    const view = this.pairs[pair];
+    if (view) view.key = position;
   }
 
   private placeKnob(key: Key, position: KeyAction): void {
