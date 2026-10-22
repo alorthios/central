@@ -3,9 +3,10 @@
  * Chaque joueur ne reçoit que la vue de son rôle.
  */
 import { BALANCE } from './balance.ts';
+import type { PlugEnd, PlugRefusal } from './game/switchboard.ts';
 import type { OperatorView } from './game/views.ts';
 
-export const PROTOCOL_VERSION = 2;
+export const PROTOCOL_VERSION = 3;
 
 export type Role = 'operator' | 'archivist';
 
@@ -13,13 +14,21 @@ export type ServerMessage =
   | { type: 'welcome'; protocolVersion: number }
   | { type: 'dayStarted'; seed: number; dayIndex: number; dayName: string }
   | { type: 'operatorView'; view: OperatorView }
+  | { type: 'plugRefused'; pair: number; end: PlugEnd; line: number; reason: PlugRefusal }
   | { type: 'dayEnded' };
 
 /**
  * `startDay` lance une journée en solo, rôle standardiste : c'est provisoire, en attendant
- * les salles de jeu à deux (#9).
+ * les salles de jeu à deux (#9). Les autres messages sont des intentions que le serveur
+ * valide.
  */
-export type ClientMessage = { type: 'ping' } | { type: 'startDay'; seed: number; dayIndex: number };
+export type ClientMessage =
+  | { type: 'ping' }
+  | { type: 'startDay'; seed: number; dayIndex: number }
+  | { type: 'plug'; pair: number; end: PlugEnd; line: number }
+  | { type: 'unplug'; pair: number; end: PlugEnd };
+
+const isEnd = (value: unknown): value is PlugEnd => value === 0 || value === 1;
 
 /** Lit un message client ; tout ce qui n'est pas conforme est rejeté (null). */
 export function parseClientMessage(raw: string): ClientMessage | null {
@@ -40,6 +49,17 @@ export function parseClientMessage(raw: string): ClientMessage | null {
       if (!Number.isSafeInteger(seed) || !Number.isInteger(dayIndex)) return null;
       if ((dayIndex as number) < 0 || (dayIndex as number) >= BALANCE.week.length) return null;
       return { type: 'startDay', seed: seed as number, dayIndex: dayIndex as number };
+    }
+    // Les bornes des paires et des lignes sont vérifiées par le standard lui-même.
+    case 'plug': {
+      const { pair, end, line } = message;
+      if (!Number.isInteger(pair) || !isEnd(end) || !Number.isInteger(line)) return null;
+      return { type: 'plug', pair: pair as number, end, line: line as number };
+    }
+    case 'unplug': {
+      const { pair, end } = message;
+      if (!Number.isInteger(pair) || !isEnd(end)) return null;
+      return { type: 'unplug', pair: pair as number, end };
     }
     default:
       return null;
