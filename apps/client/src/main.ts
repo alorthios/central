@@ -7,6 +7,12 @@ applyTheme();
 // iOS ne joue aucun son avant un premier geste : on ouvre le contexte audio au premier toucher.
 document.addEventListener('pointerdown', () => audio(), { once: true, capture: true });
 
+// Installation en web app (#57) : le service worker n'existe qu'en contexte sécurisé
+// (HTTPS, ou localhost) ; ailleurs, le jeu reste jouable dans le navigateur.
+if ('serviceWorker' in navigator && isSecureContext && import.meta.env.PROD) {
+  void navigator.serviceWorker.register('/sw.js');
+}
+
 if (new URLSearchParams(location.search).has('debug')) {
   // Chargée à part : le code de debug ne pèse pas sur la page de jeu.
   void import('./debug/debug.ts').then(({ mountDebug }) => mountDebug(document.body));

@@ -50,6 +50,19 @@ reçoit à la connexion des identifiants TURN signés, valables 12 heures (API R
 Sans `TURN_URLS` ni `TURN_SECRET`, la voix ne passe qu'entre machines qui se joignent
 directement ; la ligne 100 reste toujours utilisable par écrit.
 
+## Installer l'application
+
+Allô Central s'installe comme une application (plein écran, icône sur l'écran d'accueil) :
+
+- **Ordinateur** (Chrome, Edge) : l'icône d'installation dans la barre d'adresse.
+- **iPad** (Safari) : bouton Partager, puis « Sur l'écran d'accueil ». Le jeu se joue en
+  paysage ; les cordons se manipulent au doigt.
+
+L'installation et le micro exigent **HTTPS** (ou `localhost`). Depuis une tablette sur le réseau
+local en `http://`, le jeu fonctionne dans le navigateur, mais sans installation ni voix : passer
+par le profil `remote` ci-dessus. L'interface est gardée en cache pour démarrer vite ; une
+partie a toujours besoin du serveur.
+
 ## Développer
 
 Prérequis : Node 24 (voir `.nvmrc`).

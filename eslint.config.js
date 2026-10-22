@@ -8,4 +8,17 @@ export default defineConfig([
   js.configs.recommended,
   tseslint.configs.recommended,
   prettier,
+  {
+    // Le service worker vit dans son propre contexte d'exécution.
+    files: ['apps/client/public/sw.js'],
+    languageOptions: {
+      globals: {
+        self: 'readonly',
+        caches: 'readonly',
+        fetch: 'readonly',
+        Response: 'readonly',
+        URL: 'readonly',
+      },
+    },
+  },
 ]);
