@@ -1,7 +1,7 @@
 import { createRng } from '@allo-central/shared';
 import { BlurFilter, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import { photo } from './photo.ts';
-import type { LampColor, LampLevel, Skin } from './skin.ts';
+import type { CordTone, LampColor, LampLevel, Skin } from './skin.ts';
 
 /**
  * Le thème « vintage réaliste » (#53, GDD §16) : bois verni, bakélite, laiton, verre et
@@ -371,6 +371,12 @@ function woodFrame(
 
 const SUPERVISION_RADIUS = 6;
 
+/** Tresse de coton des cordons : bord, cœur, reflet. Beige clair à gauche, brun foncé à droite. */
+const CORD_TONES: Record<CordTone, [number, number, number]> = {
+  light: [0xb59e72, 0xdcc89e, 0xfff4d8],
+  dark: [0x24150b, 0x3d2615, 0x9a6c45],
+};
+
 export const vintageSkin: Skin = {
   background: '#0d0907',
 
@@ -629,7 +635,8 @@ export const vintageSkin: Skin = {
     return plate(text, 26, 13, '#f2e8cc');
   },
 
-  drawCord(g, home, plug, sag, plugRadius) {
+  drawCord(g, home, plug, sag, plugRadius, tone) {
+    const [edge, braid, shine] = CORD_TONES[tone];
     const path = (dx: number, dy: number) =>
       g
         .moveTo(home.x + dx, home.y + dy)
@@ -643,9 +650,9 @@ export const vintageSkin: Skin = {
         );
     // L'ombre du cordon sur le panneau, puis la tresse de coton et son reflet.
     path(4, 7).stroke({ width: 8, color: 0x000000, alpha: 0.3, cap: 'round' });
-    path(0, 0).stroke({ width: 7, color: 0x24150b, cap: 'round' });
-    path(0, 0).stroke({ width: 4, color: 0x3d2615, cap: 'round' });
-    path(-1.2, -0.6).stroke({ width: 1.3, color: 0x9a6c45, alpha: 0.6, cap: 'round' });
+    path(0, 0).stroke({ width: 7, color: edge, cap: 'round' });
+    path(0, 0).stroke({ width: 4, color: braid, cap: 'round' });
+    path(-1.2, -0.6).stroke({ width: 1.3, color: shine, alpha: 0.6, cap: 'round' });
   },
 
   drawTarget(g, x, y, radius) {

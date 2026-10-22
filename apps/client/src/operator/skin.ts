@@ -7,6 +7,8 @@ export type Point = { x: number; y: number };
 /** Ce que montre une ampoule à un instant donné : éteinte, allumée, ou en demi-teinte. */
 export type LampLevel = 'off' | 'on' | 'dim';
 export type LampColor = 'white' | 'red';
+/** Les deux fils d'une paire : beige clair pour la fiche de gauche, brun foncé pour celle de droite. */
+export type CordTone = 'light' | 'dark';
 
 export interface LampSkin {
   /** Centrée sur l'ampoule. */
@@ -47,7 +49,14 @@ export interface Skin {
   /** Le numéro d'une paire sur la tablette, ancré en haut au centre. */
   pairLabel(text: string): Container;
   /** Un cordon qui sort de la tablette et pend jusqu'à sa fiche. */
-  drawCord(g: Graphics, home: Point, plug: Point, sag: number, plugRadius: number): void;
+  drawCord(
+    g: Graphics,
+    home: Point,
+    plug: Point,
+    sag: number,
+    plugRadius: number,
+    tone: CordTone,
+  ): void;
   /** Le cercle qui désigne la prise visée pendant un geste. */
   drawTarget(g: Graphics, x: number, y: number, radius: number): void;
   /** La lumière posée sur le plateau (lampe de bureau, vignettage) ; null : aucune. */
@@ -66,8 +75,10 @@ const FLAT = {
   brassDark: 0x8a6d2a,
   hole: 0x0a0705,
   label: 0xbfaf92,
-  cord: 0x1b130d,
-  cordShine: 0x4a3626,
+  cordLight: 0xd8c49a,
+  cordLightShine: 0xf6ead0,
+  cord: 0x2a170c,
+  cordShine: 0x5a3a22,
   supervisionOn: 0xffb347,
   supervisionOff: 0x3a2f26,
   target: 0xfff1cf,
@@ -154,10 +165,10 @@ export const flatSkin: Skin = {
     label.anchor.set(0.5, 0);
     return label;
   },
-  drawCord(g, home, plug, sag, plugRadius) {
+  drawCord(g, home, plug, sag, plugRadius, tone) {
     for (const [width, color] of [
-      [6, FLAT.cord],
-      [1.5, FLAT.cordShine],
+      [6, tone === 'light' ? FLAT.cordLight : FLAT.cord],
+      [1.5, tone === 'light' ? FLAT.cordLightShine : FLAT.cordShine],
     ] as const) {
       g.moveTo(home.x, home.y)
         .bezierCurveTo(home.x, home.y - 40, plug.x, plug.y + sag, plug.x, plug.y + plugRadius)
