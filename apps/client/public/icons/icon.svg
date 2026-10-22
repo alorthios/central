@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Allô Central">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a2414" />
+      <stop offset="1" stop-color="#120b06" />
+    </linearGradient>
+    <radialGradient id="halo" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffd890" stop-opacity="0.75" />
+      <stop offset="0.45" stop-color="#ffb84a" stop-opacity="0.22" />
+      <stop offset="1" stop-color="#ffb84a" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="bulb" cx="0.38" cy="0.34" r="0.7">
+      <stop offset="0" stop-color="#fffdf2" />
+      <stop offset="0.4" stop-color="#ffe6a8" />
+      <stop offset="0.85" stop-color="#e8a842" />
+      <stop offset="1" stop-color="#9a5c18" />
+    </radialGradient>
+    <radialGradient id="brass" cx="0.32" cy="0.28" r="0.85">
+      <stop offset="0" stop-color="#fff3c4" />
+      <stop offset="0.35" stop-color="#e0bb5c" />
+      <stop offset="0.75" stop-color="#9c7a2c" />
+      <stop offset="1" stop-color="#5a4416" />
+    </radialGradient>
+  </defs>
+  <!-- Fond plein : l'icône « maskable » peut être recadrée en cercle ou en goutte. -->
+  <rect width="512" height="512" fill="url(#bg)" />
+  <circle cx="256" cy="200" r="190" fill="url(#halo)" />
+  <!-- L'ampoule allumée dans son bezel de laiton. -->
+  <circle cx="256" cy="200" r="84" fill="url(#brass)" />
+  <circle cx="256" cy="200" r="66" fill="url(#bulb)" />
+  <ellipse cx="232" cy="174" rx="24" ry="14" fill="#ffffff" fill-opacity="0.6" transform="rotate(-35 232 174)" />
+  <!-- La prise et la fiche branchée, d'où pend le cordon. -->
+  <circle cx="256" cy="340" r="40" fill="url(#brass)" />
+  <circle cx="256" cy="340" r="17" fill="#0b0806" />
+  <path d="M256 362 C 256 420, 196 420, 176 470" fill="none" stroke="#24150b" stroke-width="18" stroke-linecap="round" />
+  <path d="M252 366 C 252 418, 196 414, 174 462" fill="none" stroke="#9a6c45" stroke-width="4" stroke-linecap="round" stroke-opacity="0.6" />
+</svg>
