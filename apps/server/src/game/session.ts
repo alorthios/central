@@ -31,6 +31,8 @@ export interface SessionOptions {
   /** Accélération du temps de jeu, quand aucune horloge n'est fournie. */
   speed?: number;
   tickMs?: number;
+  /** Horloge réelle, pour la cadence de la sonnette (indépendante de l'accélération). */
+  now?: () => number;
 }
 
 /** Fréquence d'envoi de la vue : assez pour un clignotement fluide côté client. */
@@ -52,8 +54,10 @@ export class GameSession {
   private readonly dayIndex: number;
   private readonly config: DayConfig;
   private timer: ReturnType<typeof setInterval> | null = null;
+  private readonly now: () => number;
+  private lastBellAt = -Infinity;
 
-  constructor({ seed, dayIndex, send, clock, speed, tickMs }: SessionOptions) {
+  constructor({ seed, dayIndex, send, clock, speed, tickMs, now }: SessionOptions) {
     const config = BALANCE.week[dayIndex] as DayConfig | undefined;
     if (!config) throw new Error(`GameSession : journée ${dayIndex} inconnue`);
     this.seed = seed;
@@ -66,6 +70,7 @@ export class GameSession {
     this.send = send;
     this.clock = clock ?? new GameClock(undefined, speed);
     this.tickMs = tickMs ?? DEFAULT_TICK_MS;
+    this.now = now ?? Date.now;
 
     this.day = new DaySimulation(seed, config, (event) => {
       if (event.type === 'callArrived') {
@@ -163,6 +168,19 @@ export class GameSession {
   }
 
   /** Un message sur la ligne 100 ne passe que si elle est ouverte, comme la voix (§8.5). */
+  /**
+   * La sonnette (§8.4) : seul canal gratuit, de l'étage vers le rez-de-chaussée. Un coup au
+   * plus toutes les 0,6 s : les coups trop rapprochés se confondent et sont ignorés.
+   */
+  bell(): void {
+    if (!this.running || this.paused) return;
+    const now = this.now();
+    if (now - this.lastBellAt < BALANCE.bell.minIntervalMs) return;
+    this.lastBellAt = now;
+    this.board.bellRings++;
+    this.send({ type: 'bell' }, 'operator');
+  }
+
   say(from: Role, text: string): void {
     if (!this.running) return;
     this.advance();

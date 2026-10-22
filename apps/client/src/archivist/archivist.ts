@@ -4,8 +4,9 @@ import type { Joined } from '../lobby.ts';
 import { lineChat } from '../line100.ts';
 import type { Connection } from '../net.ts';
 import { roomBadge } from '../room.ts';
+import { notesPage, pinBoard } from './board.ts';
 import { renderDesk } from './desk.ts';
-import { phone } from './phone.ts';
+import { bellButton, phone } from './phone.ts';
 
 /**
  * L'écran de l'archiviste, à l'étage : son bureau et ses documents. Il ne voit rien du
@@ -30,10 +31,11 @@ export function mountArchivist(root: HTMLElement, connection: Connection, joined
   desk.append(welcome);
   // Le téléphone et la ligne 100, à portée de main sur le côté du bureau.
   const handset = phone(connection);
+  const notes = notesPage(joined.code);
   const chat = lineChat(connection, 'archivist');
   const side = document.createElement('aside');
   side.className = 'side';
-  side.append(handset.element, chat.element);
+  side.append(pinBoard(joined.code), bellButton(connection), handset.element, chat.element);
   root.replaceChildren(hud, desk, side);
 
   const onDayStarted = (message: { dayName: string; seed: number }) => {
@@ -42,7 +44,7 @@ export function mountArchivist(root: HTMLElement, connection: Connection, joined
   const started = connection.last('dayStarted');
   if (started) onDayStarted(started);
   const documents = connection.last('archivistDesk');
-  if (documents) renderDesk(desk, documents.desk);
+  if (documents) renderDesk(desk, documents.desk, notes);
 
   connection.listen((message) => {
     switch (message.type) {
@@ -55,7 +57,7 @@ export function mountArchivist(root: HTMLElement, connection: Connection, joined
         chat.setOpen(message.view.line100Open);
         break;
       case 'archivistDesk':
-        renderDesk(desk, message.desk);
+        renderDesk(desk, message.desk, notes);
         break;
       case 'dayEnded':
         status.textContent = 'Fin de journée : 18 h, les archives ferment.';

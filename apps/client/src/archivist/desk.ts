@@ -200,7 +200,7 @@ function mapView(map: MapData): HTMLElement {
  * Le bureau : un onglet par document, grisé tant qu'il n'est pas arrivé, et la taille du
  * texte réglable (§15).
  */
-export function renderDesk(root: HTMLElement, desk: ArchivistDesk): void {
+export function renderDesk(root: HTMLElement, desk: ArchivistDesk, notes: HTMLElement): void {
   const tabs = el('div', 'desk-tabs');
   tabs.setAttribute('role', 'tablist');
   const content = el('div', 'desk-content');
@@ -236,13 +236,20 @@ export function renderDesk(root: HTMLElement, desk: ArchivistDesk): void {
       button.title = `Arrive ${arrives}`;
     }
     button.addEventListener('click', () => {
-      for (const b of buttons) b.setAttribute('aria-selected', String(b === button));
+      for (const b of [...buttons, notesTab]) b.setAttribute('aria-selected', String(b === button));
       content.replaceChildren(open?.() ?? el('p'));
     });
     tabs.append(button);
     return button;
   });
-  tabs.append(zoom);
+  // Les notes libres, toujours là (§7.2).
+  const notesTab = Object.assign(el('button', 'desk-tab', 'Notes'), { type: 'button' });
+  notesTab.setAttribute('role', 'tab');
+  notesTab.addEventListener('click', () => {
+    for (const b of [...buttons, notesTab]) b.setAttribute('aria-selected', String(b === notesTab));
+    content.replaceChildren(notes);
+  });
+  tabs.append(notesTab, zoom);
   root.replaceChildren(tabs, content);
   buttons.find((b) => !b.disabled)?.click();
 }

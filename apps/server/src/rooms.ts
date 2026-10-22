@@ -33,6 +33,8 @@ export class Room {
   readonly code: string;
   private readonly seats = new Map<Role, Seat>();
   private session: GameSession | null = null;
+  /** La ville de la salle : la même toute la semaine (§5.3), tirée au premier jour. */
+  private seed: number | null = null;
 
   constructor(code: string) {
     this.code = code;
@@ -86,9 +88,10 @@ export class Room {
     const role = this.roleOf(player);
     if (!role) return;
     if (message.type === 'startDay') {
+      this.seed = message.seed ?? this.seed ?? randomInt(1_000_000);
       this.session?.stop();
       this.session = new GameSession({
-        seed: message.seed,
+        seed: this.seed,
         dayIndex: message.dayIndex,
         speed: message.speed,
         send: (m, to) => this.send(m, to),
@@ -104,6 +107,10 @@ export class Room {
       return;
     }
     // Le combiné est à l'étage ; le panneau, au rez-de-chaussée.
+    if (message.type === 'bell') {
+      if (role === 'archivist') this.session.bell();
+      return;
+    }
     if (message.type === 'handset') {
       if (role === 'archivist') this.session.handset(message.offHook);
       return;

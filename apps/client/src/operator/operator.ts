@@ -72,7 +72,11 @@ export async function mountOperator(
   const status = Object.assign(document.createElement('p'), { className: 'status' });
   status.setAttribute('role', 'status');
   status.textContent = 'Le central est fermé.';
-  hud.append(clock, ...dayControls(connection), status, roomBadge(connection, joined));
+  // La sonnette se voit aussi : chaque coup allume ce voyant le temps de sa résonance.
+  const bell = Object.assign(document.createElement('span'), { className: 'bell-light' });
+  bell.textContent = 'Sonnette';
+  bell.setAttribute('aria-hidden', 'true');
+  hud.append(clock, ...dayControls(connection), status, bell, roomBadge(connection, joined));
 
   const headset = Object.assign(document.createElement('div'), { className: 'headset' });
   const heard = document.createElement('p');
@@ -162,6 +166,12 @@ export async function mountOperator(
         if (message.notice === 'busy') sounds.busy();
         else sounds.error();
         flash(NOTICES[message.notice]);
+        break;
+      case 'bell':
+        sounds.bell();
+        bell.classList.remove('ringing');
+        void bell.offsetWidth;
+        bell.classList.add('ringing');
         break;
       case 'plugRefused':
         sounds.error();

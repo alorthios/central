@@ -74,6 +74,6 @@ export function dayReport(board: Switchboard, day: DayConfig): DayReport {
     wrongConnections: calls.reduce((sum, c) => sum + c.wrongConnections, 0),
     whichOneAsked: calls.filter((c) => c.askedWhichOne).length,
     line100Ms: Math.round(board.line100Ms),
-    bellRings: 0,
+    bellRings: board.bellRings,
   };
 }

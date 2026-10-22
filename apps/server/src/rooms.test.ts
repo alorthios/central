@@ -158,6 +158,25 @@ describe('RoomManager', () => {
     expect(carol.last('joinRefused')).toEqual({ type: 'joinRefused', reason: 'roomFull' });
   });
 
+  it('garde la même ville toute la semaine, qui que ce soit qui ouvre la journée', () => {
+    const alice = player();
+    const bob = player();
+    rooms.handle(alice, { type: 'createRoom', role: 'operator' });
+    rooms.handle(bob, { type: 'joinRoom', code: joined(alice).code, token: null });
+    rooms.handle(alice, { type: 'startDay', seed: null, dayIndex: 0, speed: 1 });
+    const first = alice.last('dayStarted');
+    rooms.handle(bob, { type: 'startDay', seed: null, dayIndex: 1, speed: 1 });
+    const second = alice.last('dayStarted');
+    expect(first?.type === 'dayStarted' && second?.type === 'dayStarted').toBe(true);
+    if (first?.type === 'dayStarted' && second?.type === 'dayStarted') {
+      expect(second.seed).toBe(first.seed);
+      expect(second.dayName).toBe('Mardi');
+    }
+    // Une graine explicite (?seed) change de ville.
+    rooms.handle(alice, { type: 'startDay', seed: 1953, dayIndex: 0, speed: 1 });
+    expect(alice.last('dayStarted')).toMatchObject({ seed: 1953 });
+  });
+
   it('une partie en solo n’est jamais en pause', () => {
     const alice = player();
     rooms.handle(alice, { type: 'createRoom', role: 'operator' });
@@ -203,6 +222,38 @@ describe('RoomManager : ligne 100', () => {
       { type: 'line100Message', from: 'operator', text: 'Le docteur près de l’église ?', at: 0 },
       { type: 'line100Message', from: 'archivist', text: 'Morel, 134.', at: 0 },
     ]);
+    rooms.closeAll();
+    vi.useRealTimers();
+  });
+});
+
+describe('RoomManager : sonnette', () => {
+  it('un coup au plus toutes les 0,6 s, de l’étage vers le rez-de-chaussée seulement', () => {
+    vi.useFakeTimers();
+    const rooms = new RoomManager();
+    const alice = player();
+    const bob = player();
+    rooms.handle(alice, { type: 'createRoom', role: 'operator' });
+    rooms.handle(bob, { type: 'joinRoom', code: joined(alice).code, token: null });
+    rooms.handle(alice, { type: 'startDay', seed: 1953, dayIndex: 0, speed: 1 });
+    const bells = () => alice.received.filter((m) => m.type === 'bell').length;
+
+    rooms.handle(bob, { type: 'bell' });
+    rooms.handle(bob, { type: 'bell' });
+    expect(bells()).toBe(1);
+    vi.advanceTimersByTime(BALANCE.bell.minIntervalMs);
+    rooms.handle(bob, { type: 'bell' });
+    expect(bells()).toBe(2);
+
+    rooms.handle(alice, { type: 'bell' });
+    vi.advanceTimersByTime(BALANCE.bell.minIntervalMs);
+    rooms.handle(alice, { type: 'bell' });
+    expect(bells()).toBe(2);
+    expect(bob.received.some((m) => m.type === 'bell')).toBe(false);
+
+    vi.advanceTimersByTime(BALANCE.dayDurationMs);
+    const ended = alice.last('dayEnded');
+    expect(ended?.type === 'dayEnded' && ended.report.bellRings).toBe(2);
     rooms.closeAll();
     vi.useRealTimers();
   });

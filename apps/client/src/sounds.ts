@@ -91,6 +91,25 @@ export const sounds = {
     if (!ctx) return;
     for (let i = 0; i < 4; i++) tone(ctx, 425, i * 0.5, 0.25, 0.15);
   },
+  /** La sonnette de l'étage : un coup clair qui résonne 1,5 s (§8.4). */
+  bell(): void {
+    const ctx = audio();
+    if (!ctx) return;
+    for (const [frequency, volume] of [
+      [1_320, 0.22],
+      [2_640, 0.08],
+      [3_960, 0.04],
+    ] as const) {
+      const oscillator = ctx.createOscillator();
+      oscillator.frequency.value = frequency;
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(volume, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.5);
+      oscillator.connect(gain).connect(ctx.destination);
+      oscillator.start();
+      oscillator.stop(ctx.currentTime + 1.5);
+    }
+  },
   /** Tonalité d'erreur : la prise refuse la fiche (§8.3). */
   error(): void {
     const ctx = audio();

@@ -10,6 +10,31 @@ const STATES: Record<PhoneState, string> = {
   offHook: 'Combiné décroché.',
 };
 
+/**
+ * La sonnette (§8.4) : le seul canal gratuit vers le rez-de-chaussée. Un coup au plus toutes
+ * les 0,6 s (le serveur ignore les coups trop rapprochés) : aux joueurs d'inventer leur code.
+ * La touche S la fait aussi sonner, sauf pendant la saisie d'un texte.
+ */
+export function bellButton(connection: Connection): HTMLElement {
+  const button = Object.assign(document.createElement('button'), { type: 'button' });
+  button.className = 'bell';
+  button.textContent = 'Agiter la sonnette';
+  button.title = 'Touche S';
+  const ring = () => {
+    connection.send({ type: 'bell' });
+    button.classList.remove('struck');
+    void button.offsetWidth;
+    button.classList.add('struck');
+  };
+  button.addEventListener('click', ring);
+  document.addEventListener('keydown', (event) => {
+    const typing =
+      event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement;
+    if (!typing && !event.repeat && event.key.toLowerCase() === 's') ring();
+  });
+  return button;
+}
+
 export interface Phone {
   element: HTMLElement;
   update(view: ArchivistView): void;
