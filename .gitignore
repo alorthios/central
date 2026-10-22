@@ -11,3 +11,5 @@ Thumbs.db
 !.vscode/extensions.json
 # Le GDD reste hors du dépôt
 *.pdf
+# Worktrees et état local de Claude Code
+.claude/
