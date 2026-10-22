@@ -4,4 +4,5 @@ export {
   SUBSCRIBER_COUNT,
   generateCity,
 } from './generate.ts';
+export { addressPoint } from './geometry.ts';
 export type * from './types.ts';

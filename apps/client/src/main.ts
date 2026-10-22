@@ -37,5 +37,10 @@ function connect(): void {
   });
 }
 
-void drawPanel();
-connect();
+if (new URLSearchParams(location.search).has('debug')) {
+  // Chargée à part : le code de debug ne pèse pas sur la page de jeu.
+  void import('./debug/debug.ts').then(({ mountDebug }) => mountDebug(document.body));
+} else {
+  void drawPanel();
+  connect();
+}
