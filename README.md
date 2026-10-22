@@ -63,6 +63,24 @@ local en `http://`, le jeu fonctionne dans le navigateur, mais sans installation
 par le profil `remote` ci-dessus. L'interface est gardée en cache pour démarrer vite ; une
 partie a toujours besoin du serveur.
 
+## Thèmes graphiques
+
+Le rendu se choisit dans l'adresse :
+
+| Paramètre        | Rendu                                                                                            |
+| ---------------- | ------------------------------------------------------------------------------------------------ |
+| _(aucun)_        | Aplats de couleur                                                                                |
+| `?theme=vintage` | Matières calculées : bois verni, bakélite, laiton, verre, ivoire                                 |
+| `?theme=photo`   | Le thème vintage, avec des textures photographiques pour le bois, le cuir, le papier et le liège |
+
+### Crédits des textures
+
+Toutes sous licence [CC0](https://creativecommons.org/publicdomain/zero/1.0/), dans
+`apps/client/public/textures/` :
+
+- Bois `dark_wood` et `wood_table_001`, cuir `brown_leather` : [Poly Haven](https://polyhaven.com)
+- Papier `Paper003`, liège `Cork003` : [ambientCG](https://ambientcg.com)
+
 ## Développer
 
 Prérequis : Node 24 (voir `.nvmrc`).

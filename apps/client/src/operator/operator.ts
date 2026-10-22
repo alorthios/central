@@ -15,6 +15,7 @@ import { memoButton } from '../help.ts';
 import { roomBadge } from '../room.ts';
 import { CordsView } from './cords.ts';
 import { PanelView } from './panel.ts';
+import { loadPhotoTextures } from './photo.ts';
 import { skin } from './skin.ts';
 import { sounds } from '../sounds.ts';
 
@@ -104,6 +105,8 @@ export async function mountOperator(
   root.replaceChildren(hud, headset, app.canvas, chat.element);
 
   const board = new Container();
+  // Thème photo : les textures doivent être là avant que le panneau ne se dessine.
+  await loadPhotoTextures();
   const panel = new PanelView();
   const cords = new CordsView(panel, {
     plug(pair, end, line) {
