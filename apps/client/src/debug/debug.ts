@@ -4,7 +4,9 @@ import {
   addressPoint,
   formatGameTime,
   generateCity,
+  generateRequests,
   scheduleDay,
+  type CallRequest,
   type City,
   type ScheduledCall,
   type Subscriber,
@@ -26,6 +28,8 @@ const PAD = 40;
 interface Day {
   city: City;
   calls: ScheduledCall[];
+  /** Une demande par appel, dans le même ordre que `calls`. */
+  requests: CallRequest[];
   callByLine: Map<number, ScheduledCall>;
   subscriberByLine: Map<number, Subscriber>;
 }
@@ -68,10 +72,12 @@ function describe(subscriber: Subscriber | undefined): string {
 
 function buildDay(seed: number, dayIndex: number): Day {
   const city = generateCity(seed);
-  const calls = scheduleDay(seed, BALANCE.week[dayIndex] ?? BALANCE.week[0]);
+  const config = BALANCE.week[dayIndex] ?? BALANCE.week[0];
+  const calls = scheduleDay(seed, config);
   return {
     city,
     calls,
+    requests: generateRequests(seed, city, calls, config),
     callByLine: new Map(calls.map((c) => [c.callerLine, c])),
     subscriberByLine: new Map(city.subscribers.map((s) => [s.line, s])),
   };
@@ -264,8 +270,18 @@ export function mountDebug(root: HTMLElement): void {
   }
 
   // --- Journée -------------------------------------------------------------------------
-  function log(at: number, text: string, kind: string): void {
-    journal.prepend(h('li', { class: kind }, h('time', {}, formatGameTime(at)), ' ', text));
+  function log(at: number, text: string, kind: string, detail?: string): void {
+    const item = h('li', { class: kind }, h('time', {}, formatGameTime(at)), ' ', text);
+    if (detail) item.append(h('span', { class: 'detail' }, detail));
+    journal.prepend(item);
+  }
+
+  /** La demande telle que l'entend le standardiste, et qui elle désigne vraiment. */
+  function requestDetail(request: CallRequest | undefined): string | undefined {
+    if (!request) return undefined;
+    const which = request.extraText ? ` (Lequel ? « ${request.extraText} »)` : '';
+    const target = describe(day.subscriberByLine.get(request.targetLine));
+    return `${request.type} « ${request.text} »${which} → ${request.targetLine} ${target}`;
   }
 
   function render(): void {
@@ -278,6 +294,7 @@ export function mountDebug(root: HTMLElement): void {
         call.at,
         `${call.callerLine} appelle : ${describe(day.subscriberByLine.get(call.callerLine))}${urgent}`,
         call.kind,
+        requestDetail(day.requests[logged]),
       );
       logged++;
     }

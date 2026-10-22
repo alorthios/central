@@ -29,7 +29,7 @@ describe('scheduleDay', () => {
   });
 
   it('refuse plus d’appels que d’abonnés', () => {
-    expect(() => scheduleDay(1, { name: 'test', calls: 80, urgentShare: 0 })).toThrow();
+    expect(() => scheduleDay(1, { ...BALANCE.week[0], calls: 80 })).toThrow();
   });
 
   const cases = BALANCE.week.flatMap((day) =>

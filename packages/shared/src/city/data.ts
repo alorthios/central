@@ -43,16 +43,28 @@ export interface LandmarkSpec {
   kind: LandmarkKind;
   name: string;
   streetName: string;
+  /** Tournure employée par les clients : « le docteur près de l'église ». */
+  nearPhrase: string;
 }
 
 /** La gare est toujours au bout de l'avenue principale ; les autres repères ont leur rue. */
 export const LANDMARKS: readonly LandmarkSpec[] = [
-  { kind: 'station', name: 'Gare', streetName: 'Avenue de la Gare' },
-  { kind: 'church', name: 'Église', streetName: "Rue de l'Église" },
-  { kind: 'townHall', name: 'Mairie', streetName: 'Place de la Mairie' },
-  { kind: 'market', name: 'Marché', streetName: 'Place du Marché' },
-  { kind: 'school', name: 'École', streetName: 'Rue des Écoles' },
-  { kind: 'postOffice', name: 'Poste', streetName: 'Rue de la Poste' },
+  { kind: 'station', name: 'Gare', streetName: 'Avenue de la Gare', nearPhrase: 'près de la gare' },
+  { kind: 'church', name: 'Église', streetName: "Rue de l'Église", nearPhrase: "près de l'église" },
+  {
+    kind: 'townHall',
+    name: 'Mairie',
+    streetName: 'Place de la Mairie',
+    nearPhrase: 'près de la mairie',
+  },
+  { kind: 'market', name: 'Marché', streetName: 'Place du Marché', nearPhrase: 'près du marché' },
+  { kind: 'school', name: 'École', streetName: 'Rue des Écoles', nearPhrase: "près de l'école" },
+  {
+    kind: 'postOffice',
+    name: 'Poste',
+    streetName: 'Rue de la Poste',
+    nearPhrase: 'près de la poste',
+  },
 ];
 
 export interface ProfessionSpec {
