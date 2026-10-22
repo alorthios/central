@@ -51,7 +51,8 @@ export type ServerMessage =
   | { type: 'operatorView'; view: OperatorView }
   | { type: 'plugRefused'; pair: number; end: PlugEnd; line: number; reason: PlugRefusal }
   | { type: 'notice'; notice: Notice; line: number }
-  | { type: 'dayEnded'; report: DayReport };
+  /** `journal` : le journal de la journée, en CSV (§17). */
+  | { type: 'dayEnded'; report: DayReport; journal: string };
 
 /**
  * On crée une salle en choisissant son rôle, ou on la rejoint avec son code (et son jeton

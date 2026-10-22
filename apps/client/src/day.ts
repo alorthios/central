@@ -42,6 +42,10 @@ export function dayControls(connection: Connection): HTMLElement[] {
       showReport(message.report, {
         replay: () => startDay(dayIndex),
         next: hasNext ? () => startDay(dayIndex + 1) : null,
+        journal: {
+          csv: message.journal,
+          filename: `allo-central-${message.report.dayName.toLowerCase()}.csv`,
+        },
       });
     }
   });

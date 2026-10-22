@@ -4,6 +4,8 @@ export interface ReportActions {
   replay(): void;
   /** Absent : pas de journée suivante (fin de semaine, ou journée à rejouer). */
   next: (() => void) | null;
+  /** Le journal CSV de la journée, à télécharger pour les mesures (§19). */
+  journal: { csv: string; filename: string };
 }
 
 const percent = (rate: number) => `${Math.round(rate * 100)} %`;
@@ -63,7 +65,20 @@ export function showReport(report: DayReport, actions: ReportActions): void {
     dialog.close();
     actions.replay();
   });
-  buttons.append(replay);
+  const download = Object.assign(document.createElement('button'), { type: 'button' });
+  download.textContent = 'Télécharger le journal';
+  download.title = 'Chaque événement de la journée, horodaté (CSV)';
+  download.addEventListener('click', () => {
+    // Le BOM fait lire les accents correctement aux tableurs.
+    const blob = new Blob(['﻿' + actions.journal.csv], { type: 'text/csv;charset=utf-8' });
+    const link = Object.assign(document.createElement('a'), {
+      href: URL.createObjectURL(blob),
+      download: actions.journal.filename,
+    });
+    link.click();
+    URL.revokeObjectURL(link.href);
+  });
+  buttons.append(download, replay);
   if (actions.next) {
     const next = Object.assign(document.createElement('button'), { type: 'button' });
     next.textContent = 'Journée suivante';
