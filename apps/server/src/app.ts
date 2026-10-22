@@ -36,10 +36,18 @@ export function createApp({ clientDist }: AppOptions = {}): Server {
     send({ type: 'welcome', protocolVersion: PROTOCOL_VERSION });
     socket.on('message', (data) => {
       const message = parseClientMessage(String(data));
-      if (message?.type === 'startDay') {
-        session?.stop();
-        session = new GameSession({ seed: message.seed, dayIndex: message.dayIndex, send });
-        session.start();
+      switch (message?.type) {
+        case 'startDay':
+          session?.stop();
+          session = new GameSession({ seed: message.seed, dayIndex: message.dayIndex, send });
+          session.start();
+          break;
+        case 'plug':
+          session?.plug(message.pair, message.end, message.line);
+          break;
+        case 'unplug':
+          session?.unplug(message.pair, message.end);
+          break;
       }
     });
     socket.on('close', () => session?.stop());

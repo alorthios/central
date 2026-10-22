@@ -23,6 +23,9 @@ const COLORS = {
 /** Clignotement : lent quand l'appel arrive, frénétique quand le client va raccrocher (§6.1). */
 const SLOW_PERIOD_MS = 900;
 const FAST_PERIOD_MS = 160;
+/** La prise est sous l'ampoule ; une fiche lâchée à moins de ce rayon s'y enfonce. */
+const JACK_OFFSET = 30;
+const JACK_SNAP_RADIUS = 28;
 
 interface Lamp {
   glass: Graphics;
@@ -32,6 +35,8 @@ interface Lamp {
 /** Le panneau du standard, vu de face : 80 prises surmontées de leur ampoule. */
 export class PanelView {
   readonly container = new Container();
+  /** Les numéros des prises, posés au-dessus des cordons pour rester lisibles. */
+  readonly labels = new Container();
   readonly width = COLUMNS * CELL_W + 2 * MARGIN;
   readonly height = ROWS * CELL_H + 2 * MARGIN;
   private readonly lamps = new Map<number, Lamp>();
@@ -56,6 +61,29 @@ export class PanelView {
     }
   }
 
+  /** Centre de la prise d'une ligne, dans le repère du panneau. */
+  jackPosition(line: number): { x: number; y: number } {
+    const index = line - ARCHIVIST_LINE;
+    const col = index % COLUMNS;
+    const row = Math.floor(index / COLUMNS);
+    return { x: MARGIN + col * CELL_W + CELL_W / 2, y: MARGIN + row * CELL_H + 22 + JACK_OFFSET };
+  }
+
+  /** La prise la plus proche d'un point, si elle est assez près pour y enfoncer une fiche. */
+  jackAt(x: number, y: number): number | null {
+    let best: number | null = null;
+    let bestDistance = JACK_SNAP_RADIUS;
+    for (const line of this.lamps.keys()) {
+      const jack = this.jackPosition(line);
+      const distance = Math.hypot(jack.x - x, jack.y - y);
+      if (distance < bestDistance) {
+        best = line;
+        bestDistance = distance;
+      }
+    }
+    return best;
+  }
+
   private addJack(line: number, x: number, y: number): void {
     const glass = new Graphics().circle(0, 0, LAMP_RADIUS).fill(0xffffff);
     glass.position.set(x, y);
@@ -68,9 +96,9 @@ export class PanelView {
 
     const rim = new Graphics().circle(x, y, LAMP_RADIUS + 2).stroke({ width: 2, color: 0x2a211a });
     const jack = new Graphics()
-      .circle(x, y + 30, 9)
+      .circle(x, y + JACK_OFFSET, 9)
       .fill(COLORS.brass)
-      .circle(x, y + 30, 5)
+      .circle(x, y + JACK_OFFSET, 5)
       .fill(COLORS.hole);
     const label = new Text({
       text: String(line),
@@ -82,9 +110,10 @@ export class PanelView {
       },
     });
     label.anchor.set(0.5, 0);
-    label.position.set(x, y + 43);
+    label.position.set(x, y + JACK_OFFSET + 13);
 
-    this.container.addChild(rim, glass, cross, jack, label);
+    this.container.addChild(rim, glass, cross, jack);
+    this.labels.addChild(label);
     this.lamps.set(line, { glass, cross });
   }
 
@@ -103,6 +132,10 @@ export class PanelView {
         continue;
       }
       const on = lamp.cap === 'red' ? COLORS.red : COLORS.white;
+      if (lamp.state === 'steady') {
+        glass.tint = on;
+        continue;
+      }
       const period = SLOW_PERIOD_MS - (SLOW_PERIOD_MS - FAST_PERIOD_MS) * lamp.urgency;
       // Un léger décalage par ligne : deux ampoules ne clignotent pas à l'unisson.
       const phase = (nowMs + line * 97) % period;

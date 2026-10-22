@@ -9,6 +9,17 @@ describe('parseClientMessage', () => {
       seed: 1953,
       dayIndex: 2,
     });
+    expect(parseClientMessage('{"type":"plug","pair":3,"end":1,"line":141}')).toEqual({
+      type: 'plug',
+      pair: 3,
+      end: 1,
+      line: 141,
+    });
+    expect(parseClientMessage('{"type":"unplug","pair":0,"end":0}')).toEqual({
+      type: 'unplug',
+      pair: 0,
+      end: 0,
+    });
   });
 
   it.each([
@@ -20,6 +31,10 @@ describe('parseClientMessage', () => {
     '{"type":"startDay","seed":1953,"dayIndex":7}',
     '{"type":"startDay","seed":1953,"dayIndex":-1}',
     '{"type":"startDay","seed":1.5,"dayIndex":0}',
+    '{"type":"plug","pair":0,"end":2,"line":141}',
+    '{"type":"plug","pair":0,"end":0}',
+    '{"type":"plug","pair":"0","end":0,"line":141}',
+    '{"type":"unplug","pair":0}',
   ])('rejette %s', (raw) => {
     expect(parseClientMessage(raw)).toBeNull();
   });

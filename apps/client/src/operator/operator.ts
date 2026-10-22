@@ -1,9 +1,17 @@
-import { BALANCE, formatGameTime } from '@allo-central/shared';
-import { Application } from 'pixi.js';
+import { BALANCE, type PlugRefusal, formatGameTime } from '@allo-central/shared';
+import { Application, Container } from 'pixi.js';
 import { connect } from '../net.ts';
+import { CordsView } from './cords.ts';
 import { PanelView } from './panel.ts';
 
 const HUD_HEIGHT = 64;
+
+const REFUSALS: Record<PlugRefusal, string> = {
+  jackBusy: 'Cette prise est déjà occupée.',
+  clientToArchivist: "Impossible : un client ne peut pas être relié à l'étage.",
+  unknownLine: 'Cette prise n’existe pas.',
+  unknownPair: 'Ce cordon n’existe pas.',
+};
 
 /** L'écran du standardiste. En solo pour l'instant : on prend son service sur une journée. */
 export async function mountOperator(root: HTMLElement): Promise<void> {
@@ -31,23 +39,38 @@ export async function mountOperator(root: HTMLElement): Promise<void> {
   await app.init({ resizeTo: window, background: '#17110d', antialias: true });
   root.replaceChildren(hud, app.canvas);
 
+  const board = new Container();
   const panel = new PanelView();
-  app.stage.addChild(panel.container);
+  const cords = new CordsView(panel, {
+    plug: (pair, end, line) => connection.send({ type: 'plug', pair, end, line }),
+    unplug: (pair, end) => connection.send({ type: 'unplug', pair, end }),
+  });
+  board.addChild(panel.container, cords.container, panel.labels);
+  app.stage.addChild(board);
+
   const layout = () => {
     const scale = Math.min(
       (app.screen.width - 32) / panel.width,
-      (app.screen.height - HUD_HEIGHT - 32) / panel.height,
+      (app.screen.height - HUD_HEIGHT - 32) / cords.height,
       1.4,
     );
-    panel.container.scale.set(scale);
-    panel.container.position.set(
+    board.scale.set(scale);
+    board.position.set(
       (app.screen.width - panel.width * scale) / 2,
-      HUD_HEIGHT + (app.screen.height - HUD_HEIGHT - panel.height * scale) / 2,
+      HUD_HEIGHT + (app.screen.height - HUD_HEIGHT - cords.height * scale) / 2,
     );
   };
   app.renderer.on('resize', layout);
   layout();
   app.ticker.add(() => panel.animate(performance.now()));
+
+  let dayStatus = '';
+  let notice: ReturnType<typeof setTimeout> | undefined;
+  const flash = (text: string) => {
+    status.textContent = text;
+    clearTimeout(notice);
+    notice = setTimeout(() => (status.textContent = dayStatus), 2_500);
+  };
 
   const connection = connect({
     onMessage(message) {
@@ -57,12 +80,17 @@ export async function mountOperator(root: HTMLElement): Promise<void> {
           start.disabled = false;
           break;
         case 'dayStarted':
-          status.textContent = `${message.dayName} · ville n° ${message.seed}`;
+          dayStatus = `${message.dayName} · ville n° ${message.seed}`;
+          status.textContent = dayStatus;
           start.textContent = 'Recommencer la journée';
           break;
         case 'operatorView':
           panel.update(message.view);
+          cords.update(message.view.pairs);
           clock.textContent = formatGameTime(message.view.elapsedMs);
+          break;
+        case 'plugRefused':
+          flash(REFUSALS[message.reason]);
           break;
         case 'dayEnded':
           status.textContent = 'Fin de journée : 18 h, le central ferme.';

@@ -1,6 +1,7 @@
 import {
   BALANCE,
   type CallRequest,
+  type PlugEnd,
   type ScheduledCall,
   type ServerMessage,
   Switchboard,
@@ -76,12 +77,36 @@ export class GameSession {
     this.timer = null;
   }
 
-  private tick(): void {
+  plug(pair: number, end: PlugEnd, line: number): void {
+    if (!this.running) return;
+    this.advance();
+    const reason = this.board.plug(pair, end, line);
+    if (reason) this.send({ type: 'plugRefused', pair, end, line, reason });
+    this.sendView();
+  }
+
+  unplug(pair: number, end: PlugEnd): void {
+    if (!this.running) return;
+    this.advance();
+    this.board.unplug(pair, end);
+    this.sendView();
+  }
+
+  /** Amène le standard et la journée à l'instant présent, y compris entre deux ticks. */
+  private advance(): void {
     const elapsed = this.clock.elapsed();
-    // Le standard d'abord : un appel reçu à ce tick part avec la patience exacte qu'il lui reste.
+    // Le standard d'abord : un appel reçu maintenant part avec la patience exacte qu'il lui reste.
     this.board.advanceTo(elapsed);
     this.day.advanceTo(elapsed);
+  }
+
+  private sendView(): void {
     this.send({ type: 'operatorView', view: operatorView(this.board) });
+  }
+
+  private tick(): void {
+    this.advance();
+    this.sendView();
     if (this.day.ended) {
       this.send({ type: 'dayEnded' });
       this.stop();
