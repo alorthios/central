@@ -1,0 +1,48 @@
+name: Retour de recette
+description: Un retour de test du MVP (bug, ergonomie, équilibrage, idée)
+title: '[Recette] '
+labels: ['recette']
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Type de retour
+      options:
+        - Bug
+        - Ergonomie (compréhension, confort, lisibilité)
+        - Équilibrage (trop dur, trop facile, rythme)
+        - Idée
+    validations:
+      required: true
+  - type: dropdown
+    id: role
+    attributes:
+      label: Rôle
+      options:
+        - Standardiste
+        - Archiviste
+        - Les deux
+        - Accueil, salle, connexion
+    validations:
+      required: true
+  - type: input
+    id: context
+    attributes:
+      label: Journée et ville
+      description: Affichées dans le bandeau (« Mercredi · ville n° 1953 ») ; elles permettent de rejouer la même situation.
+      placeholder: 'Mercredi · ville n° 1953, vers 12 h 30'
+  - type: textarea
+    id: what
+    attributes:
+      label: Ce que j'ai fait, ce qui s'est passé
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Ce que j'attendais
+  - type: textarea
+    id: attachments
+    attributes:
+      label: Captures, journal CSV
+      description: Glisser une capture d'écran, ou le journal CSV téléchargé depuis le bilan (utile pour l'équilibrage).
