@@ -1,5 +1,6 @@
 import { createRng } from '@allo-central/shared';
 import { BlurFilter, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
+import { photo } from './photo.ts';
 import type { LampColor, LampLevel, Skin } from './skin.ts';
 
 /**
@@ -74,62 +75,113 @@ function grain(
 /** Du bois verni : veines ondulées, quelques nœuds, un reflet de vernis. */
 function wood(tone: [string, string], seed: number): Draw {
   return (ctx, w, h) => {
-    const rng = createRng(seed);
-    const base = ctx.createLinearGradient(0, 0, w * 0.3, h);
-    base.addColorStop(0, tone[0]);
-    base.addColorStop(1, tone[1]);
-    ctx.fillStyle = base;
-    ctx.fillRect(0, 0, w, h);
-    for (let i = 0; i < h / 1.6; i++) {
-      const y0 = rng() * h;
-      const amplitude = 1.5 + rng() * 5;
-      const frequency = 0.004 + rng() * 0.012;
-      const phase = rng() * Math.PI * 2;
-      const dark = rng() < 0.6;
-      ctx.strokeStyle = dark
-        ? `rgba(28, 12, 4, ${0.06 + rng() * 0.16})`
-        : `rgba(196, 128, 70, ${0.04 + rng() * 0.09})`;
-      ctx.lineWidth = 0.3 + rng() * 1.6;
-      ctx.beginPath();
-      for (let x = 0; x <= w; x += 5) {
-        const y =
-          y0 +
-          Math.sin(x * frequency + phase) * amplitude +
-          Math.sin(x * frequency * 3.3 + phase) * amplitude * 0.25;
-        if (x === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-    }
-    for (let k = 0; k < Math.max(1, Math.round((w * h) / 140_000)); k++) {
-      const cx = rng() * w;
-      const cy = rng() * h;
-      for (let r = 2; r < 16; r += 2.2) {
-        ctx.strokeStyle = `rgba(30, 12, 4, ${0.14 - r * 0.006})`;
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.ellipse(cx, cy, r * 2.4, r * 0.7, 0, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-    }
-    grain(ctx, w, h, 14, seed + 1);
-    const gloss = ctx.createLinearGradient(0, 0, 0, h);
-    gloss.addColorStop(0, 'rgba(255, 236, 200, 0.12)');
-    gloss.addColorStop(0.4, 'rgba(255, 236, 200, 0)');
-    gloss.addColorStop(1, 'rgba(0, 0, 0, 0.18)');
-    ctx.fillStyle = gloss;
-    ctx.fillRect(0, 0, w, h);
+    const image = photo('frameWood');
+    if (image) photoFill(ctx, image, w, h, seed, 'rgba(40, 18, 6, 0.18)');
+    else carveWood(ctx, w, h, tone, seed);
+    varnish(ctx, w, h);
   };
 }
 
-/** La face du panneau : de la bakélite noire, légèrement grenue. */
-const bakelite: Draw = (ctx, w, h) => {
-  const base = ctx.createLinearGradient(0, 0, 0, h);
-  base.addColorStop(0, '#231a13');
-  base.addColorStop(1, '#0c0806');
+/** Le bois dessiné : veines ondulées, quelques nœuds, un grain fin. */
+function carveWood(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  tone: [string, string],
+  seed: number,
+): void {
+  const rng = createRng(seed);
+  const base = ctx.createLinearGradient(0, 0, w * 0.3, h);
+  base.addColorStop(0, tone[0]);
+  base.addColorStop(1, tone[1]);
   ctx.fillStyle = base;
   ctx.fillRect(0, 0, w, h);
-  grain(ctx, w, h, 10, 7);
+  for (let i = 0; i < h / 1.6; i++) {
+    const y0 = rng() * h;
+    const amplitude = 1.5 + rng() * 5;
+    const frequency = 0.004 + rng() * 0.012;
+    const phase = rng() * Math.PI * 2;
+    const dark = rng() < 0.6;
+    ctx.strokeStyle = dark
+      ? `rgba(28, 12, 4, ${0.06 + rng() * 0.16})`
+      : `rgba(196, 128, 70, ${0.04 + rng() * 0.09})`;
+    ctx.lineWidth = 0.3 + rng() * 1.6;
+    ctx.beginPath();
+    for (let x = 0; x <= w; x += 5) {
+      const y =
+        y0 +
+        Math.sin(x * frequency + phase) * amplitude +
+        Math.sin(x * frequency * 3.3 + phase) * amplitude * 0.25;
+      if (x === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+  for (let k = 0; k < Math.max(1, Math.round((w * h) / 140_000)); k++) {
+    const cx = rng() * w;
+    const cy = rng() * h;
+    for (let r = 2; r < 16; r += 2.2) {
+      ctx.strokeStyle = `rgba(30, 12, 4, ${0.14 - r * 0.006})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, r * 2.4, r * 0.7, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+  grain(ctx, w, h, 14, seed + 1);
+}
+
+/** Le reflet du vernis en haut, le bois qui fonce vers le bas. */
+function varnish(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+  const gloss = ctx.createLinearGradient(0, 0, 0, h);
+  gloss.addColorStop(0, 'rgba(255, 236, 200, 0.12)');
+  gloss.addColorStop(0.4, 'rgba(255, 236, 200, 0)');
+  gloss.addColorStop(1, 'rgba(0, 0, 0, 0.18)');
+  ctx.fillStyle = gloss;
+  ctx.fillRect(0, 0, w, h);
+}
+
+/**
+ * Une texture photographique en motif (thème `photo`), décalée selon la graine pour que deux
+ * meubles n'aient pas les mêmes veines, et teintée pour s'accorder à la scène.
+ */
+function photoFill(
+  ctx: CanvasRenderingContext2D,
+  image: HTMLImageElement,
+  w: number,
+  h: number,
+  seed: number,
+  tint: string,
+): void {
+  const pattern = ctx.createPattern(image, 'repeat');
+  if (!pattern) return;
+  const offset = (seed * 137) % image.width;
+  pattern.setTransform(new DOMMatrix().scale(PHOTO_SCALE).translate(-offset, -offset / 2));
+  ctx.fillStyle = pattern;
+  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = tint;
+  ctx.fillRect(0, 0, w, h);
+}
+
+/** Une texture de 1 024 pixels couvre ainsi environ 600 unités du plateau. */
+const PHOTO_SCALE = 0.6;
+
+/**
+ * La face du panneau : de la bakélite noire, légèrement grenue ; avec le thème `photo`, un
+ * cuir sombre et patiné.
+ */
+const bakelite: Draw = (ctx, w, h) => {
+  const leather = photo('leather');
+  if (leather) {
+    photoFill(ctx, leather, w, h, 3, 'rgba(14, 8, 4, 0.62)');
+  } else {
+    const base = ctx.createLinearGradient(0, 0, 0, h);
+    base.addColorStop(0, '#231a13');
+    base.addColorStop(1, '#0c0806');
+    ctx.fillStyle = base;
+    ctx.fillRect(0, 0, w, h);
+    grain(ctx, w, h, 10, 7);
+  }
   // L'ombre portée du cadre de bois sur la face.
   for (let i = 0; i < 10; i++) {
     ctx.strokeStyle = `rgba(0, 0, 0, ${0.32 - i * 0.03})`;

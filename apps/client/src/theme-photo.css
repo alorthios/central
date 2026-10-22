@@ -1,0 +1,35 @@
+/*
+ * Thème « photo » (#55) : le thème vintage, ses grandes surfaces habillées de textures
+ * photographiques CC0 (Poly Haven, ambientCG ; crédits dans le README). Chargé seulement avec
+ * ?theme=photo, par-dessus theme-vintage.css.
+ */
+:root[data-textures='photo'] {
+  --wood:
+    linear-gradient(180deg, rgba(255, 236, 200, 0.08), rgba(0, 0, 0, 0.25)),
+    url('/textures/desk-wood.jpg') center / 520px;
+  --photo-paper:
+    radial-gradient(ellipse at 85% 10%, rgba(150, 100, 40, 0.14), transparent 45%),
+    radial-gradient(ellipse at 10% 95%, rgba(150, 100, 40, 0.12), transparent 40%),
+    linear-gradient(rgba(239, 222, 180, 0.62), rgba(226, 204, 158, 0.62)),
+    url('/textures/paper.jpg') center / 640px;
+}
+
+/* Le papier : de vraies fibres et des plis, teintés vers le jaune du temps. */
+:root[data-textures='photo'] .paper,
+:root[data-textures='photo'] .headset,
+:root[data-textures='photo'] .pin,
+:root[data-textures='photo'] dialog {
+  background: var(--photo-paper) !important;
+}
+:root[data-textures='photo'] .hud select,
+:root[data-textures='photo'] input:not([type='radio']):not([type='checkbox']),
+:root[data-textures='photo'] textarea {
+  background-color: transparent;
+}
+
+/* Le tableau d'épingles : du vrai liège. */
+:root[data-textures='photo'] .pins {
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255, 220, 160, 0.12), transparent 60%),
+    url('/textures/cork.jpg') center / 256px;
+}
