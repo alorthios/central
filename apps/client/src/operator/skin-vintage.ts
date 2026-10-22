@@ -207,6 +207,11 @@ const bakelite: Draw = (ctx, w, h) => {
 /** Le rayon des coins de la face du panneau, et celui du cadre de bois. */
 const FACE_RADIUS = 6;
 const FRAME_RADIUS = 10;
+/**
+ * La distance des vis aux bords, la même sur le panneau et la tablette : au milieu de la
+ * bande de bois qui entoure la face du panneau.
+ */
+const SCREW_INSET = 9;
 
 /** Un anneau de laiton poli, éclairé d'en haut à gauche. */
 function brassRing(outer: number, inner: number): Draw {
@@ -502,7 +507,7 @@ export const vintageSkin: Skin = {
       .fill(0xffffff);
     face.mask = faceMask;
     // Les vis au milieu de la bande de bois, dans l'axe de chaque coin.
-    panel.addChild(face, faceMask, ...screws(width, height, margin / 4, 11));
+    panel.addChild(face, faceMask, ...screws(width, height, SCREW_INSET, 11));
     return panel;
   },
 
@@ -566,7 +571,7 @@ export const vintageSkin: Skin = {
       ['#7a4622', '#43240f'],
       1954,
     );
-    shelf.addChild(...screws(width, height, 13, 12));
+    shelf.addChild(...screws(width, height, SCREW_INSET, 12));
     return shelf;
   },
 
