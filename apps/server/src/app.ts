@@ -39,7 +39,12 @@ export function createApp({ clientDist }: AppOptions = {}): Server {
       switch (message?.type) {
         case 'startDay':
           session?.stop();
-          session = new GameSession({ seed: message.seed, dayIndex: message.dayIndex, send });
+          session = new GameSession({
+            seed: message.seed,
+            dayIndex: message.dayIndex,
+            speed: message.speed,
+            send,
+          });
           session.start();
           break;
         case 'plug':

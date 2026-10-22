@@ -48,7 +48,7 @@ describe('GameSession', () => {
   it('termine la journée à 18 h et s’arrête', () => {
     const { session, messages } = start(0);
     vi.advanceTimersByTime(BALANCE.dayDurationMs + 200);
-    expect(messages.at(-1)).toEqual({ type: 'dayEnded' });
+    expect(messages.at(-1)).toMatchObject({ type: 'dayEnded', report: { dayName: 'Lundi' } });
     expect(session.running).toBe(false);
     expect(vi.getTimerCount()).toBe(0);
   });

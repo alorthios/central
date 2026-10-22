@@ -37,6 +37,18 @@ describe('GameClock', () => {
     expect(clock.elapsed()).toBe(1_500);
   });
 
+  it('accélère le temps de jeu, pauses comprises', () => {
+    const time = fakeTime();
+    const clock = new GameClock(time.now, 10);
+    clock.start();
+    time.advance(1_000);
+    clock.pause();
+    time.advance(5_000);
+    clock.resume();
+    time.advance(500);
+    expect(clock.elapsed()).toBe(15_000);
+  });
+
   it('ignore les appels redondants', () => {
     const time = fakeTime();
     const clock = new GameClock(time.now);

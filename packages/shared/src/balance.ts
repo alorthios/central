@@ -79,6 +79,8 @@ export const BALANCE = {
     },
     {
       name: 'Réveillon',
+      // Surcharge voulue : le réveillon est noté plus large (§10.2, §11).
+      stars: { one: 0.4, two: 0.55, three: 0.7 },
       calls: 36,
       urgentShare: 0.15,
       sources: ['directory', 'professions', 'map'],
@@ -107,6 +109,12 @@ export type Source = 'directory' | 'professions' | 'map';
 /** Types de demandes du MVP (§9.2) : numéro, nom exact, homonyme, métier (et lieu). */
 export type RequestType = 'T0' | 'T1' | 'T2' | 'T3';
 
+export interface StarThresholds {
+  one: number;
+  two: number;
+  three: number;
+}
+
 export interface DayConfig {
   name: string;
   calls: number;
@@ -115,4 +123,6 @@ export interface DayConfig {
   sources: readonly Source[];
   /** Poids relatifs des types de demandes ; un type absent n'apparaît pas ce jour-là. */
   requests: Partial<Record<RequestType, number>>;
+  /** Seuils d'étoiles propres à la journée ; sinon ceux de BALANCE.stars. */
+  stars?: StarThresholds;
 }

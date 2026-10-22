@@ -89,6 +89,77 @@
         font-style: normal;
         cursor: pointer;
       }
+      .report {
+        box-sizing: border-box;
+        width: min(460px, calc(100% - 32px));
+        padding: 24px 28px;
+        border: 1px solid #c9a44c;
+        border-radius: 14px;
+        background: #221912;
+        color: #f3eada;
+      }
+      .report::backdrop {
+        background: #0a0705cc;
+      }
+      .report h2 {
+        margin: 0;
+        font-size: 24px;
+      }
+      .report .stars {
+        margin: 8px 0 0;
+        font-size: 44px;
+        letter-spacing: 6px;
+        color: #c9a44c;
+      }
+      .report .rate {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 600;
+      }
+      .report .verdict {
+        margin: 6px 0 16px;
+        color: #bfaf92;
+        font-size: 14px;
+      }
+      .report .verdict.replay {
+        color: #f0604c;
+      }
+      .report dl {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 6px 16px;
+        margin: 0 0 20px;
+        font-size: 15px;
+      }
+      .report dt {
+        color: #bfaf92;
+      }
+      .report dd {
+        margin: 0;
+        text-align: right;
+      }
+      .report .buttons {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 10px;
+      }
+      .report button {
+        min-height: 44px;
+        padding: 6px 16px;
+        border: 1px solid #5a4430;
+        border-radius: 8px;
+        background: #17110d;
+        color: #f3eada;
+        font: inherit;
+        cursor: pointer;
+      }
+      .report button.primary {
+        border-color: #c9a44c;
+        background: #c9a44c;
+        color: #17110d;
+        font-weight: 600;
+      }
       .hud .status {
         margin: 0;
         color: #bfaf92;
