@@ -1,13 +1,19 @@
 import { BALANCE } from '../balance.ts';
 import { ARCHIVIST_LINE, FIRST_SUBSCRIBER_LINE, SUBSCRIBER_COUNT } from '../city/generate.ts';
 import type { CallRequest } from '../requests/generate.ts';
+import { createRng, randomInt } from '../rng.ts';
 import type { ScheduledCall, ScheduledCallKind } from '../schedule.ts';
 
 /**
- * `ringing` : personne n'a répondu ; `held` : une fiche est branchée sur la ligne du
- * client, qui attend ; `lost` : le client a raccroché.
+ * Le déroulé d'un appel (§5.1) :
+ * - `ringing` : l'ampoule clignote, personne n'a répondu ;
+ * - `held` : une fiche est branchée sur la ligne du client, qui attend ;
+ * - `connecting` : le standardiste fait sonner le correspondant ;
+ * - `talking` : le correspondant a décroché, ils se parlent ;
+ * - `done` : ils ont raccroché, il reste à retirer les fiches ;
+ * - `lost` : le client a raccroché avant d'être servi, ou a été coupé.
  */
-export type CallStatus = 'ringing' | 'held' | 'lost';
+export type CallStatus = 'ringing' | 'held' | 'connecting' | 'talking' | 'done' | 'lost';
 
 export interface LiveCall {
   id: number;
@@ -18,10 +24,21 @@ export interface LiveCall {
   patienceMs: number;
   remainingMs: number;
   status: CallStatus;
+  /** La ligne que le standardiste a fait sonner pour ce client ; null avant. */
+  connectedLine: number | null;
+  /** `connecting` : quand le correspondant décroche ; `talking` : quand ils raccrochent. */
+  nextAt: number;
 }
 
 /** Une extrémité de paire : 0 ou 1. Les deux fiches d'une paire sont identiques (§6.3). */
 export type PlugEnd = 0 | 1;
+
+/**
+ * Position de la clé d'une paire (§6.4) : en haut, le casque du standardiste rejoint la
+ * paire ; au milieu, repos. La position basse (sonner) est un geste : la clé revient seule.
+ */
+export type KeyPosition = 'talk' | 'rest';
+export type KeyAction = KeyPosition | 'ring';
 
 export interface CordPair {
   id: number;
@@ -32,35 +49,57 @@ export interface CordPair {
    * raccroché alors que la fiche était branchée. Il s'éteint quand on retire la fiche.
    */
   supervision: [boolean, boolean];
+  key: KeyPosition;
 }
+
+/** Ce qu'on entend dans le casque, clé levée. */
+export type Hearing =
+  | { kind: 'silence' }
+  | { kind: 'client'; text: string }
+  | { kind: 'ringback' }
+  | { kind: 'conversation' };
 
 export type PlugRefusal = 'unknownPair' | 'unknownLine' | 'jackBusy' | 'clientToArchivist';
 
 export type SwitchboardEvent =
   | { type: 'callLost'; call: LiveCall; reason: 'patience' | 'cutOff' }
-  | { type: 'callAnswered'; call: LiveCall };
+  | { type: 'callAnswered'; call: LiveCall }
+  | { type: 'callConnected'; call: LiveCall }
+  | { type: 'callCompleted'; call: LiveCall; correct: boolean };
 
 const LAST_LINE = FIRST_SUBSCRIBER_LINE + SUBSCRIBER_COUNT - 1;
+const ACTIVE: readonly CallStatus[] = ['ringing', 'held', 'connecting', 'talking'];
+
+/** Vitesse à laquelle la patience s'use : un client à qui l'on a répondu patiente mieux (§6.5). */
+function patienceRate(status: CallStatus): number {
+  if (status === 'ringing') return 1;
+  if (status === 'held' || status === 'connecting') return BALANCE.onHoldPatienceRate;
+  return 0;
+}
 
 /**
- * L'état du standard pendant une journée : les appels, leur patience et les cordons.
- * Comme la simulation, il avance par `advanceTo(elapsedMs)` et reste déterministe.
+ * L'état du standard pendant une journée : les appels, les cordons et les clés. Comme la
+ * simulation, il avance par `advanceTo(elapsedMs)` ; son hasard (qui décroche quand, combien
+ * dure une conversation) vient d'un générateur fourni, ce qui le garde déterministe.
  */
 export class Switchboard {
   readonly calls: LiveCall[] = [];
   readonly pairs: CordPair[];
   private elapsed = 0;
   private readonly onEvent: (event: SwitchboardEvent) => void;
+  private readonly random: () => number;
 
   constructor(
     onEvent: (event: SwitchboardEvent) => void = () => {},
-    pairCount: number = BALANCE.cordPairs,
+    random: () => number = createRng(0),
   ) {
     this.onEvent = onEvent;
-    this.pairs = Array.from({ length: pairCount }, (_, id) => ({
+    this.random = random;
+    this.pairs = Array.from({ length: BALANCE.cordPairs }, (_, id) => ({
       id,
       plugs: [null, null],
       supervision: [false, false],
+      key: 'rest',
     }));
   }
 
@@ -79,24 +118,21 @@ export class Switchboard {
       patienceMs,
       remainingMs: patienceMs - Math.max(0, this.elapsed - call.at),
       status: 'ringing',
+      connectedLine: null,
+      nextAt: 0,
     });
   }
 
   advanceTo(elapsedMs: number): void {
-    const delta = elapsedMs - this.elapsed;
-    if (delta <= 0) return;
+    const from = this.elapsed;
+    if (elapsedMs <= from) return;
     this.elapsed = elapsedMs;
-    for (const call of this.calls) {
-      if (call.status === 'lost') continue;
-      // Un client à qui l'on a répondu s'impatiente moins vite (§6.5).
-      call.remainingMs -= call.status === 'held' ? delta * BALANCE.onHoldPatienceRate : delta;
-      if (call.remainingMs <= 0) this.lose(call, 'patience');
-    }
+    for (const call of this.calls) this.step(call, from, elapsedMs);
   }
 
-  /** L'appel en cours sur une ligne (qui sonne ou attend), s'il y en a un. */
+  /** L'appel en cours dont le client est sur cette ligne (qui sonne, attend ou parle). */
   activeCallOn(line: number): LiveCall | undefined {
-    return this.calls.find((c) => c.callerLine === line && c.status !== 'lost');
+    return this.calls.find((c) => c.callerLine === line && ACTIVE.includes(c.status));
   }
 
   /** La paire et la fiche branchées sur une prise, s'il y en a une. */
@@ -135,22 +171,140 @@ export class Switchboard {
     return null;
   }
 
-  /** Remet une fiche sur la tablette. Un client en attente est alors coupé. */
+  /**
+   * Remet une fiche sur la tablette. Côté client, l'appel en cours est coupé ; côté
+   * correspondant, la sonnerie s'arrête (le client attend de nouveau) ou la conversation
+   * est coupée.
+   */
   unplug(pairId: number, end: PlugEnd): void {
     const pair = this.pairs[pairId];
     const line = pair?.plugs[end];
     if (!pair || line === null || line === undefined) return;
     pair.plugs[end] = null;
     pair.supervision[end] = false;
-    const call = this.activeCallOn(line);
-    if (call?.status === 'held') this.lose(call, 'cutOff');
+
+    const call = this.calls.find(
+      (c) => ACTIVE.includes(c.status) && (c.callerLine === line || c.connectedLine === line),
+    );
+    if (!call) return;
+    if (line === call.callerLine) {
+      if (call.status !== 'ringing') this.lose(call, 'cutOff');
+    } else if (call.status === 'connecting') {
+      call.status = 'held';
+      call.connectedLine = null;
+    } else if (call.status === 'talking') {
+      this.lose(call, 'cutOff');
+    }
+  }
+
+  /**
+   * Manœuvre la clé d'une paire. Une seule écoute (§6.4) : lever une clé fait retomber
+   * celle qui était levée. Sonner fait sonner la ligne de la paire qui n'a pas décroché.
+   */
+  setKey(pairId: number, action: KeyAction): void {
+    const pair = this.pairs[pairId];
+    if (!pair) return;
+    if (action === 'ring') {
+      this.ring(pair);
+      return;
+    }
+    if (action === 'talk') {
+      for (const other of this.pairs) other.key = 'rest';
+    }
+    pair.key = action;
+  }
+
+  /** La paire dont la clé est levée, et ce qu'on y entend. */
+  headset(): { pair: number | null; hearing: Hearing } {
+    const pair = this.pairs.find((p) => p.key === 'talk');
+    if (!pair) return { pair: null, hearing: { kind: 'silence' } };
+    const call = this.callOnPair(pair);
+    switch (call?.status) {
+      case 'held':
+        return { pair: pair.id, hearing: { kind: 'client', text: call.request.text } };
+      case 'connecting':
+        return { pair: pair.id, hearing: { kind: 'ringback' } };
+      case 'talking':
+        return { pair: pair.id, hearing: { kind: 'conversation' } };
+      default:
+        return { pair: pair.id, hearing: { kind: 'silence' } };
+    }
+  }
+
+  /**
+   * L'appel dont le client est branché sur cette paire : en cours, ou terminé tant que la
+   * paire relie encore les deux abonnés.
+   */
+  callOnPair(pair: CordPair): LiveCall | undefined {
+    return this.calls.find(
+      (c) =>
+        pair.plugs.includes(c.callerLine) &&
+        (ACTIVE.includes(c.status) ||
+          (c.status === 'done' && pair.plugs.includes(c.connectedLine))),
+    );
+  }
+
+  private ring(pair: CordPair): void {
+    const call = this.callOnPair(pair);
+    if (call?.status !== 'held') return;
+    const target = pair.plugs.find((line) => line !== null && line !== call.callerLine);
+    // Faire sonner l'étage passe par la ligne 100 (#17) ; une fiche seule ne sonne rien.
+    if (target === undefined || target === null || target === ARCHIVIST_LINE) return;
+    const rings = randomInt(this.random, BALANCE.answerRings.min, BALANCE.answerRings.max);
+    call.status = 'connecting';
+    call.connectedLine = target;
+    call.nextAt = this.elapsed + rings * BALANCE.ringIntervalMs;
+  }
+
+  /** Fait vivre un appel entre deux instants, en passant les étapes qui tombent entre les deux. */
+  private step(call: LiveCall, from: number, to: number): void {
+    let now = from;
+    if (call.status === 'connecting' && call.nextAt <= to) {
+      this.wait(call, call.nextAt - now);
+      if (call.status !== 'connecting') return;
+      now = call.nextAt;
+      const { min, max } = BALANCE.conversationMs;
+      call.status = 'talking';
+      call.nextAt = now + min + Math.floor(this.random() * (max - min));
+      this.onEvent({ type: 'callConnected', call });
+    }
+    if (call.status === 'talking') {
+      if (call.nextAt <= to) this.complete(call);
+      return;
+    }
+    this.wait(call, to - now);
+  }
+
+  private wait(call: LiveCall, duration: number): void {
+    const rate = patienceRate(call.status);
+    if (rate === 0 || duration <= 0) return;
+    call.remainingMs -= duration * rate;
+    if (call.remainingMs <= 0) this.lose(call, 'patience');
+  }
+
+  private complete(call: LiveCall): void {
+    call.status = 'done';
+    this.lightSupervision(call);
+    this.onEvent({
+      type: 'callCompleted',
+      call,
+      correct: call.connectedLine === call.request.targetLine,
+    });
   }
 
   private lose(call: LiveCall, reason: 'patience' | 'cutOff'): void {
     call.status = 'lost';
     call.remainingMs = Math.max(0, call.remainingMs);
-    const plugged = this.plugIn(call.callerLine);
-    if (plugged) plugged.pair.supervision[plugged.end] = true;
+    this.lightSupervision(call);
     this.onEvent({ type: 'callLost', call, reason });
+  }
+
+  /** Les abonnés ont raccroché : les voyants des fiches encore branchées s'allument. */
+  private lightSupervision(call: LiveCall): void {
+    for (const line of [call.callerLine, call.connectedLine]) {
+      if (line === null) continue;
+      const plugged = this.plugIn(line);
+      if (plugged) plugged.pair.supervision[plugged.end] = true;
+    }
   }
 }

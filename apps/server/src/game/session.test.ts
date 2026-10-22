@@ -74,6 +74,27 @@ describe('GameSession', () => {
     expect(session.board.calls[0]?.status).toBe('lost');
   });
 
+  it('sert un appel de bout en bout avec les clés', () => {
+    const { session, views } = start();
+    const call = session.schedule[0];
+    if (!call) throw new Error('planning vide');
+    vi.advanceTimersByTime(call.at + 100);
+
+    session.plug(0, 0, call.callerLine);
+    session.key(0, 'talk');
+    const hearing = views().at(-1)?.headset.hearing;
+    expect(hearing?.kind).toBe('client');
+
+    const target = session.board.calls[0]?.request.targetLine as number;
+    session.plug(0, 1, target);
+    session.key(0, 'ring');
+    vi.advanceTimersByTime(BALANCE.answerRings.max * BALANCE.ringIntervalMs + 200);
+    expect(session.board.calls[0]?.status).toBe('talking');
+
+    vi.advanceTimersByTime(BALANCE.conversationMs.max);
+    expect(session.board.calls[0]?.status).toBe('done');
+  });
+
   it('signale un branchement refusé', () => {
     const { session, messages } = start();
     session.plug(0, 0, 141);

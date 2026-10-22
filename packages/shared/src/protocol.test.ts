@@ -39,3 +39,17 @@ describe('parseClientMessage', () => {
     expect(parseClientMessage(raw)).toBeNull();
   });
 });
+
+describe('parseClientMessage : clés', () => {
+  it.each(['talk', 'rest', 'ring'])('accepte la clé %s', (action) => {
+    expect(parseClientMessage(JSON.stringify({ type: 'key', pair: 2, action }))).toEqual({
+      type: 'key',
+      pair: 2,
+      action,
+    });
+  });
+
+  it('rejette une position inconnue', () => {
+    expect(parseClientMessage('{"type":"key","pair":2,"action":"down"}')).toBeNull();
+  });
+});

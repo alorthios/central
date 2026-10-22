@@ -48,6 +48,9 @@ export function createApp({ clientDist }: AppOptions = {}): Server {
         case 'unplug':
           session?.unplug(message.pair, message.end);
           break;
+        case 'key':
+          session?.key(message.pair, message.action);
+          break;
       }
     });
     socket.on('close', () => session?.stop());

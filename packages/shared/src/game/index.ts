@@ -1,6 +1,9 @@
 export {
   type CallStatus,
   type CordPair,
+  type Hearing,
+  type KeyAction,
+  type KeyPosition,
   type LiveCall,
   type PlugEnd,
   type PlugRefusal,

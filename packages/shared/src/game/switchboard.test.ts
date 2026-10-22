@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BALANCE } from '../balance.ts';
 import type { CallRequest } from '../requests/generate.ts';
+import { createRng } from '../rng.ts';
 import type { ScheduledCall } from '../schedule.ts';
 import { Switchboard, type SwitchboardEvent } from './switchboard.ts';
 import { operatorView } from './views.ts';
@@ -178,5 +179,138 @@ describe('Switchboard : cordons', () => {
     expect(board.calls[0]?.status).toBe('lost');
     board.plug(3, 0, 141);
     expect(board.pairs[3]?.supervision).toEqual([false, false]);
+  });
+});
+
+describe('Switchboard : clés et déroulé d’un appel', () => {
+  /** Un client sur la 141 qui demande le 134, déjà branché sur la fiche 0 de la paire 0. */
+  function answered() {
+    const events: SwitchboardEvent[] = [];
+    const board = new Switchboard((e) => events.push(e));
+    board.receive(call({ at: 0 }), request);
+    board.plug(0, 0, 141);
+    return { board, events };
+  }
+
+  /** Avance jusqu'à ce que le correspondant décroche (au plus deux sonneries). */
+  const untilAnswered = (board: Switchboard) =>
+    board.advanceTo(board.elapsedMs + BALANCE.answerRings.max * BALANCE.ringIntervalMs);
+
+  it('clé levée : on entend la demande du client, et elle seule', () => {
+    const { board } = answered();
+    expect(board.headset()).toEqual({ pair: null, hearing: { kind: 'silence' } });
+    board.setKey(0, 'talk');
+    expect(board.headset()).toEqual({
+      pair: 0,
+      hearing: { kind: 'client', text: "Passez-moi le 134, s'il vous plaît." },
+    });
+    expect(operatorView(board).pairs[0]?.key).toBe('talk');
+  });
+
+  it('une seule écoute : lever une clé fait retomber la précédente', () => {
+    const { board } = answered();
+    board.setKey(0, 'talk');
+    board.setKey(3, 'talk');
+    expect(board.pairs.map((p) => p.key).filter((k) => k === 'talk')).toHaveLength(1);
+    expect(board.pairs[0]?.key).toBe('rest');
+    expect(board.headset().pair).toBe(3);
+  });
+
+  it('sonner sans correspondant branché ne fait rien', () => {
+    const { board } = answered();
+    board.setKey(0, 'ring');
+    expect(board.calls[0]?.status).toBe('held');
+  });
+
+  it('déroule un appel complet : sonnerie, conversation, fin, fiches retirées', () => {
+    const { board, events } = answered();
+    board.plug(0, 1, 134);
+    board.setKey(0, 'ring');
+    expect(board.calls[0]?.status).toBe('connecting');
+    expect(board.pairs[0]?.key).toBe('rest');
+
+    board.setKey(0, 'talk');
+    expect(board.headset().hearing).toEqual({ kind: 'ringback' });
+
+    untilAnswered(board);
+    expect(board.calls[0]?.status).toBe('talking');
+    expect(board.headset().hearing).toEqual({ kind: 'conversation' });
+    const lamps = () => Object.fromEntries(operatorView(board).lamps.map((l) => [l.line, l.state]));
+    expect(lamps()).toEqual({ 141: 'flicker', 134: 'flicker' });
+
+    board.advanceTo(board.elapsedMs + BALANCE.conversationMs.max);
+    expect(board.calls[0]?.status).toBe('done');
+    expect(events.at(-1)).toMatchObject({ type: 'callCompleted', correct: true });
+    expect(lamps()).toEqual({ 141: 'slowBlink', 134: 'slowBlink' });
+    expect(board.pairs[0]?.supervision).toEqual([true, true]);
+
+    board.unplug(0, 0);
+    expect(lamps()).toEqual({ 134: 'slowBlink' });
+    board.unplug(0, 1);
+    expect(lamps()).toEqual({});
+    expect(board.calls[0]?.status).toBe('done');
+  });
+
+  it('signale une mise en relation avec le mauvais abonné', () => {
+    const { board, events } = answered();
+    board.plug(0, 1, 152);
+    board.setKey(0, 'ring');
+    untilAnswered(board);
+    board.advanceTo(board.elapsedMs + BALANCE.conversationMs.max);
+    expect(events.at(-1)).toMatchObject({ type: 'callCompleted', correct: false });
+  });
+
+  it('pendant la conversation, la patience ne s’use plus', () => {
+    const { board } = answered();
+    board.plug(0, 1, 134);
+    board.setKey(0, 'ring');
+    untilAnswered(board);
+    const remaining = board.calls[0]?.remainingMs;
+    board.advanceTo(board.elapsedMs + 20_000);
+    expect(board.calls[0]?.remainingMs).toBe(remaining);
+  });
+
+  it('retirer la fiche du correspondant pendant qu’il sonne : le client attend de nouveau', () => {
+    const { board } = answered();
+    board.plug(0, 1, 134);
+    board.setKey(0, 'ring');
+    board.unplug(0, 1);
+    expect(board.calls[0]?.status).toBe('held');
+    expect(board.calls[0]?.connectedLine).toBeNull();
+  });
+
+  it('couper une conversation perd l’appel et allume la supervision de l’autre côté', () => {
+    const { board, events } = answered();
+    board.plug(0, 1, 134);
+    board.setKey(0, 'ring');
+    untilAnswered(board);
+    board.unplug(0, 1);
+    expect(board.calls[0]?.status).toBe('lost');
+    expect(events.at(-1)).toMatchObject({ type: 'callLost', reason: 'cutOff' });
+    expect(board.pairs[0]?.supervision[0]).toBe(true);
+  });
+
+  it('le client peut raccrocher pendant que le correspondant sonne', () => {
+    const board = new Switchboard();
+    board.receive(call({ at: 0 }), request);
+    board.advanceTo(BALANCE.patienceMs.normal - 500);
+    board.plug(0, 0, 141);
+    board.plug(0, 1, 134);
+    board.setKey(0, 'ring');
+    board.advanceTo(board.elapsedMs + 1_000);
+    expect(board.calls[0]?.status).toBe('lost');
+  });
+
+  it('est déterministe pour un même générateur', () => {
+    const durations = [1, 2].map(() => {
+      const board = new Switchboard(() => {}, createRng(42));
+      board.receive(call({ at: 0 }), request);
+      board.plug(0, 0, 141);
+      board.plug(0, 1, 134);
+      board.setKey(0, 'ring');
+      untilAnswered(board);
+      return board.calls[0]?.nextAt;
+    });
+    expect(durations[0]).toBe(durations[1]);
   });
 });
