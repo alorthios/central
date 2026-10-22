@@ -8,7 +8,7 @@ import type { ArchivistDesk } from './game/desk.ts';
 import type { DayReport } from './game/score.ts';
 import type { ArchivistView, OperatorView } from './game/views.ts';
 
-export const PROTOCOL_VERSION = 7;
+export const PROTOCOL_VERSION = 8;
 
 /** Vitesse maximale du temps de jeu, pour tester une journée sans attendre 10 minutes. */
 export const MAX_SPEED = 60;
@@ -31,6 +31,20 @@ export const DEV_ROOM_CODE = 'TEST';
 /** Code de salle : quatre lettres, sans I ni O pour éviter la confusion avec 1 et 0. */
 export const ROOM_CODE_PATTERN = /^[A-HJ-NP-Z]{4}$/;
 
+/**
+ * La signalisation WebRTC de la voix (§8.1), relayée telle quelle à l'autre joueur.
+ * `hello` : « mon écran est prêt » ; le standardiste y répond par une offre. Une réponse
+ * reprend le numéro de son offre : une réponse à une offre périmée est ignorée.
+ */
+export type RtcSignal =
+  | { kind: 'hello' }
+  | { kind: 'offer' | 'answer'; id: number; sdp: string }
+  | { kind: 'ice'; candidate: string; sdpMid: string | null; sdpMLineIndex: number | null };
+
+/** Bornes d'un signal WebRTC : une description de session audio tient largement dedans. */
+export const MAX_SDP_LENGTH = 20_000;
+const MAX_CANDIDATE_LENGTH = 1_000;
+
 export type ServerMessage =
   | { type: 'welcome'; protocolVersion: number }
   /** `token` permet de reprendre sa place après une déconnexion. */
@@ -49,6 +63,8 @@ export type ServerMessage =
   | { type: 'line100Message'; from: Role; text: string; at: number }
   /** La sonnette de l'étage retentit au rez-de-chaussée. */
   | { type: 'bell' }
+  /** Un signal WebRTC de l'autre joueur. */
+  | { type: 'rtc'; signal: RtcSignal }
   /** Les documents de l'archiviste, envoyés à lui seul en début de journée. */
   | { type: 'archivistDesk'; desk: ArchivistDesk }
   | { type: 'dayStarted'; seed: number; dayIndex: number; dayName: string }
@@ -83,10 +99,41 @@ export type ClientMessage =
   /** Un message texte sur la ligne 100 : il ne passe que si la ligne est ouverte. */
   | { type: 'say'; text: string }
   /** Un coup de sonnette de l'archiviste (§8.4). */
-  | { type: 'bell' };
+  | { type: 'bell' }
+  /** Un signal WebRTC pour l'autre joueur, même hors journée : la voix s'établit d'avance. */
+  | { type: 'rtc'; signal: RtcSignal };
 
 /** Longueur maximale d'un message sur la ligne 100. */
 export const MAX_SAY_LENGTH = 200;
+
+function parseRtcSignal(value: unknown): RtcSignal | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const signal = value as Record<string, unknown>;
+  switch (signal.kind) {
+    case 'hello':
+      return { kind: 'hello' };
+    case 'offer':
+    case 'answer':
+      if (!Number.isSafeInteger(signal.id)) return null;
+      return typeof signal.sdp === 'string' && signal.sdp.length <= MAX_SDP_LENGTH
+        ? { kind: signal.kind, id: signal.id as number, sdp: signal.sdp }
+        : null;
+    case 'ice': {
+      const { candidate, sdpMid = null, sdpMLineIndex = null } = signal;
+      if (typeof candidate !== 'string' || candidate.length > MAX_CANDIDATE_LENGTH) return null;
+      if (sdpMid !== null && (typeof sdpMid !== 'string' || sdpMid.length > 64)) return null;
+      if (sdpMLineIndex !== null && !Number.isInteger(sdpMLineIndex)) return null;
+      return {
+        kind: 'ice',
+        candidate,
+        sdpMid: sdpMid as string | null,
+        sdpMLineIndex: sdpMLineIndex as number | null,
+      };
+    }
+    default:
+      return null;
+  }
+}
 
 const isEnd = (value: unknown): value is PlugEnd => value === 0 || value === 1;
 const isKeyAction = (value: unknown): value is KeyAction =>
@@ -110,6 +157,10 @@ export function parseClientMessage(raw: string): ClientMessage | null {
       return { type: 'whichOne' };
     case 'bell':
       return { type: 'bell' };
+    case 'rtc': {
+      const signal = parseRtcSignal(message.signal);
+      return signal ? { type: 'rtc', signal } : null;
+    }
     case 'handset':
       return typeof message.offHook === 'boolean'
         ? { type: 'handset', offHook: message.offHook }

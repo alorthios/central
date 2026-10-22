@@ -399,6 +399,27 @@
         color: #c9a44c;
         font-weight: 600;
       }
+      .line100 .voice {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px 10px;
+        margin-bottom: 6px;
+        color: #bfaf92;
+        font-size: 13px;
+      }
+      .line100 .voice[data-state='connected'] {
+        color: #8fbf6a;
+      }
+      .line100 .voice[data-state='failed'] {
+        color: #f0604c;
+      }
+      .line100 .voice button {
+        min-height: 32px;
+        padding: 2px 10px;
+        font-size: 13px;
+      }
       .line100 ol {
         max-height: 180px;
         margin: 0 0 8px;

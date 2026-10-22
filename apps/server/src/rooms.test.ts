@@ -235,6 +235,26 @@ describe('RoomManager : mode développeur', () => {
   });
 });
 
+describe('RoomManager : voix', () => {
+  it('relaie les signaux WebRTC à l’autre joueur seulement, même hors journée', () => {
+    const rooms = new RoomManager();
+    const alice = player();
+    const bob = player();
+    rooms.handle(alice, { type: 'createRoom', role: 'operator' });
+    rooms.handle(bob, { type: 'joinRoom', code: joined(alice).code, token: null });
+
+    rooms.handle(bob, { type: 'rtc', signal: { kind: 'hello' } });
+    rooms.handle(alice, { type: 'rtc', signal: { kind: 'offer', id: 1, sdp: 'v=0' } });
+    expect(alice.received.filter((m) => m.type === 'rtc')).toEqual([
+      { type: 'rtc', signal: { kind: 'hello' } },
+    ]);
+    expect(bob.received.filter((m) => m.type === 'rtc')).toEqual([
+      { type: 'rtc', signal: { kind: 'offer', id: 1, sdp: 'v=0' } },
+    ]);
+    rooms.closeAll();
+  });
+});
+
 describe('RoomManager : ligne 100', () => {
   it('relaie le texte seulement ligne ouverte, et seul l’archiviste a le combiné', () => {
     vi.useFakeTimers();

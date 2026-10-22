@@ -7,7 +7,8 @@ let context: AudioContext | null = null;
 /** Au-delà, le client a tout dit : on n'allonge pas le charabia indéfiniment. */
 const MAX_BABBLE_LETTERS = 90;
 
-function audio(): AudioContext | null {
+/** Le contexte audio partagé (la voix de l'autre joueur y passe aussi), créé au besoin. */
+export function audio(): AudioContext | null {
   try {
     context ??= new AudioContext();
     if (context.state === 'suspended') void context.resume();
