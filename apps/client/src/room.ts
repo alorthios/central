@@ -5,6 +5,10 @@ import type { Connection } from './net.ts';
 type RoomState = Extract<ServerMessage, { type: 'roomState' }>;
 
 const NAMES: Record<Role, string> = { operator: 'le standardiste', archivist: "l'archiviste" };
+const AWAITED: Record<Role, string> = {
+  operator: 'du standardiste',
+  archivist: "de l'archiviste",
+};
 
 function partnerText(state: RoomState, me: Role): string {
   const partner: Role = me === 'operator' ? 'archivist' : 'operator';
@@ -15,7 +19,7 @@ function partnerText(state: RoomState, me: Role): string {
     case 'away':
       return `${name.charAt(0).toUpperCase()}${name.slice(1)} s'est déconnecté : la journée est en pause.`;
     case 'empty':
-      return `En attente de ${name} : donnez-lui le code ${state.code}.`;
+      return `En attente ${AWAITED[partner]} : donnez-lui le code ${state.code}.`;
   }
 }
 

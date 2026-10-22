@@ -4,6 +4,7 @@
  */
 import { BALANCE } from './balance.ts';
 import type { KeyAction, PlugEnd, PlugRefusal } from './game/switchboard.ts';
+import type { ArchivistDesk } from './game/desk.ts';
 import type { DayReport } from './game/score.ts';
 import type { ArchivistView, OperatorView } from './game/views.ts';
 
@@ -40,6 +41,8 @@ export type ServerMessage =
       paused: boolean;
     }
   | { type: 'archivistView'; view: ArchivistView }
+  /** Les documents de l'archiviste, envoyés à lui seul en début de journée. */
+  | { type: 'archivistDesk'; desk: ArchivistDesk }
   | { type: 'dayStarted'; seed: number; dayIndex: number; dayName: string }
   | { type: 'operatorView'; view: OperatorView }
   | { type: 'plugRefused'; pair: number; end: PlugEnd; line: number; reason: PlugRefusal }

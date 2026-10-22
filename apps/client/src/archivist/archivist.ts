@@ -3,6 +3,7 @@ import { dayControls } from '../day.ts';
 import type { Joined } from '../lobby.ts';
 import type { Connection } from '../net.ts';
 import { roomBadge } from '../room.ts';
+import { renderDesk } from './desk.ts';
 
 /**
  * L'écran de l'archiviste, à l'étage : son bureau et ses documents. Il ne voit rien du
@@ -32,6 +33,8 @@ export function mountArchivist(root: HTMLElement, connection: Connection, joined
   };
   const started = connection.last('dayStarted');
   if (started) onDayStarted(started);
+  const documents = connection.last('archivistDesk');
+  if (documents) renderDesk(desk, documents.desk);
 
   connection.listen((message) => {
     switch (message.type) {
@@ -40,6 +43,9 @@ export function mountArchivist(root: HTMLElement, connection: Connection, joined
         break;
       case 'archivistView':
         clock.textContent = formatGameTime(message.view.elapsedMs);
+        break;
+      case 'archivistDesk':
+        renderDesk(desk, message.desk);
         break;
       case 'dayEnded':
         status.textContent = 'Fin de journée : 18 h, les archives ferment.';

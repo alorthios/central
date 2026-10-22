@@ -217,7 +217,159 @@
       .desk {
         box-sizing: border-box;
         min-height: 100vh;
-        padding: 88px 16px 24px;
+        padding: 128px 16px 24px;
+      }
+      .desk {
+        --desk-scale: 1;
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      .desk-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+      .desk-tab,
+      .desk-zoom button,
+      .paper-nav button {
+        min-height: 44px;
+        padding: 6px 16px;
+        border: 1px solid #5a4430;
+        border-radius: 8px;
+        background: #221912;
+        color: #f3eada;
+        font: inherit;
+        cursor: pointer;
+      }
+      .desk-tab[aria-selected='true'] {
+        border-color: #c9a44c;
+        background: #c9a44c;
+        color: #17110d;
+        font-weight: 600;
+      }
+      .desk-tab:disabled,
+      .paper-nav button:disabled {
+        opacity: 0.45;
+        cursor: default;
+      }
+      .desk-zoom {
+        display: flex;
+        gap: 6px;
+        margin-left: auto;
+      }
+      .paper {
+        padding: 20px 24px;
+        border-radius: 6px;
+        background: #f3eada;
+        color: #17110d;
+        font-size: calc(16px * var(--desk-scale));
+        box-shadow: 0 6px 24px #0008;
+      }
+      .paper:focus-visible {
+        outline: 3px solid #c9a44c;
+        outline-offset: 3px;
+      }
+      .paper-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 12px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #17110d;
+      }
+      .paper-head h3 {
+        margin: 0;
+        font-size: 1.2em;
+        letter-spacing: 1px;
+      }
+      .paper-position {
+        color: #6e5a40;
+        font-size: 0.85em;
+      }
+      .paper-nav {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 16px;
+      }
+      .paper-nav button {
+        border-color: #6e5a40;
+        background: #e7dac0;
+        color: #17110d;
+      }
+      .directory,
+      .card {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      .directory li {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: baseline;
+        gap: 0 8px;
+        padding: 8px 0;
+        border-bottom: 1px dotted #b8a888;
+      }
+      .directory .dots {
+        border-bottom: 2px dotted #6e5a40;
+      }
+      .directory .line {
+        font:
+          700 1.1em ui-monospace,
+          monospace;
+      }
+      .directory .address,
+      .card .address {
+        grid-column: 1 / -1;
+        color: #6e5a40;
+        font-size: 0.85em;
+      }
+      .card li {
+        display: flex;
+        flex-direction: column;
+        padding: 10px 0;
+        border-bottom: 1px dotted #b8a888;
+      }
+      .map-paper {
+        padding: 12px;
+      }
+      .map {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+      .map .street {
+        stroke: #c8b896;
+        stroke-width: 14;
+        stroke-linecap: round;
+      }
+      .map text {
+        paint-order: stroke;
+        stroke: #f3eada;
+        stroke-width: 4px;
+        stroke-linejoin: round;
+      }
+      .map .street-name {
+        fill: #3a2a0c;
+        font-size: calc(12px * var(--desk-scale));
+        font-style: italic;
+      }
+      .map .house {
+        fill: #6e3e20;
+      }
+      .map .house-number {
+        fill: #6e3e20;
+        font-size: calc(10px * var(--desk-scale));
+      }
+      .map .landmark {
+        fill: #8c5a2e;
+      }
+      .map .landmark-name {
+        fill: #17110d;
+        font-size: calc(14px * var(--desk-scale));
+        font-weight: 700;
       }
       .desk-empty {
         max-width: 560px;
