@@ -1,9 +1,11 @@
 import { formatGameTime } from '@allo-central/shared';
 import { dayControls } from '../day.ts';
 import type { Joined } from '../lobby.ts';
+import { lineChat } from '../line100.ts';
 import type { Connection } from '../net.ts';
 import { roomBadge } from '../room.ts';
 import { renderDesk } from './desk.ts';
+import { phone } from './phone.ts';
 
 /**
  * L'écran de l'archiviste, à l'étage : son bureau et ses documents. Il ne voit rien du
@@ -26,7 +28,13 @@ export function mountArchivist(root: HTMLElement, connection: Connection, joined
   welcome.textContent =
     'Le bureau des archives, à l’étage. Vos documents arrivent avec la journée.';
   desk.append(welcome);
-  root.replaceChildren(hud, desk);
+  // Le téléphone et la ligne 100, à portée de main sur le côté du bureau.
+  const handset = phone(connection);
+  const chat = lineChat(connection, 'archivist');
+  const side = document.createElement('aside');
+  side.className = 'side';
+  side.append(handset.element, chat.element);
+  root.replaceChildren(hud, desk, side);
 
   const onDayStarted = (message: { dayName: string; seed: number }) => {
     status.textContent = `${message.dayName} · ville n° ${message.seed}`;
@@ -43,6 +51,8 @@ export function mountArchivist(root: HTMLElement, connection: Connection, joined
         break;
       case 'archivistView':
         clock.textContent = formatGameTime(message.view.elapsedMs);
+        handset.update(message.view);
+        chat.setOpen(message.view.line100Open);
         break;
       case 'archivistDesk':
         renderDesk(desk, message.desk);

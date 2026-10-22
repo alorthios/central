@@ -83,3 +83,25 @@ describe('parseClientMessage : salles', () => {
     expect(parseClientMessage(raw)).toBeNull();
   });
 });
+
+describe('parseClientMessage : ligne 100', () => {
+  it('accepte le combiné et les messages, coupés à la longueur maximale', () => {
+    expect(parseClientMessage('{"type":"handset","offHook":true}')).toEqual({
+      type: 'handset',
+      offHook: true,
+    });
+    expect(parseClientMessage('{"type":"say","text":"  Morel, 134  "}')).toEqual({
+      type: 'say',
+      text: 'Morel, 134',
+    });
+    const long = parseClientMessage(JSON.stringify({ type: 'say', text: 'x'.repeat(500) }));
+    expect(long?.type === 'say' && long.text.length).toBe(200);
+  });
+
+  it.each(['{"type":"handset","offHook":"oui"}', '{"type":"say","text":"   "}', '{"type":"say"}'])(
+    'rejette %s',
+    (raw) => {
+      expect(parseClientMessage(raw)).toBeNull();
+    },
+  );
+});

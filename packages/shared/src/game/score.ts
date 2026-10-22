@@ -73,7 +73,7 @@ export function dayReport(board: Switchboard, day: DayConfig): DayReport {
     averageHandlingMs: handled.length > 0 ? Math.round(totalHandling / handled.length) : null,
     wrongConnections: calls.reduce((sum, c) => sum + c.wrongConnections, 0),
     whichOneAsked: calls.filter((c) => c.askedWhichOne).length,
-    line100Ms: 0,
+    line100Ms: Math.round(board.line100Ms),
     bellRings: 0,
   };
 }

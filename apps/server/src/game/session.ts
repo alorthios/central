@@ -155,6 +155,21 @@ export class GameSession {
     }
   }
 
+  handset(offHook: boolean): void {
+    if (!this.running) return;
+    this.advance();
+    this.board.setHandset(offHook);
+    this.sendView();
+  }
+
+  /** Un message sur la ligne 100 ne passe que si elle est ouverte, comme la voix (§8.5). */
+  say(from: Role, text: string): void {
+    if (!this.running) return;
+    this.advance();
+    if (!this.board.line100Open()) return;
+    this.send({ type: 'line100Message', from, text, at: Math.round(this.board.elapsedMs) });
+  }
+
   key(pair: number, action: KeyAction): void {
     if (!this.running) return;
     this.advance();

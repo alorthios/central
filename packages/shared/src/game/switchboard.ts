@@ -77,7 +77,9 @@ export type Hearing =
   | { kind: 'client'; lines: string[]; askedWhichOne: boolean }
   | { kind: 'ringback' }
   | { kind: 'conversation' }
-  | { kind: 'informed'; reason: Unreachable };
+  | { kind: 'informed'; reason: Unreachable }
+  /** La ligne 100 est ouverte : on parle avec l'archiviste (§8.1). */
+  | { kind: 'archivist' };
 
 export type PlugRefusal = 'unknownPair' | 'unknownLine' | 'jackBusy' | 'clientToArchivist';
 
@@ -89,7 +91,9 @@ export type SwitchboardEvent =
   | { type: 'callUnreachable'; call: LiveCall; reason: Unreachable }
   | { type: 'wrongConnection'; call: LiveCall; line: number }
   | { type: 'callInformed'; call: LiveCall }
-  | { type: 'whichOneAsked'; call: LiveCall };
+  | { type: 'whichOneAsked'; call: LiveCall }
+  /** Le standardiste fait sonner le téléphone de l'étage. */
+  | { type: 'upstairsRinging' };
 
 const LAST_LINE = FIRST_SUBSCRIBER_LINE + SUBSCRIBER_COUNT - 1;
 const ACTIVE: readonly CallStatus[] = ['ringing', 'held', 'connecting', 'talking', 'unreachable'];
@@ -118,6 +122,12 @@ export class Switchboard {
   private readonly random: () => number;
   private readonly callbacks: { at: number; of: LiveCall }[] = [];
   private nextCallbackId = CALLBACK_ID_BASE;
+  /** Le combiné de l'archiviste est décroché (§8.1). */
+  private archivistOffHook = false;
+  /** Jusqu'à quand le téléphone de l'étage sonne. */
+  private upstairsRingingUntil = 0;
+  /** Temps cumulé ligne 100 ouverte, pour le bilan (§11). */
+  line100Ms = 0;
 
   constructor(
     onEvent: (event: SwitchboardEvent) => void = () => {},
@@ -164,6 +174,7 @@ export class Switchboard {
   advanceTo(elapsedMs: number): void {
     const from = this.elapsed;
     if (elapsedMs <= from) return;
+    if (this.line100Open()) this.line100Ms += elapsedMs - from;
     this.elapsed = elapsedMs;
     for (const call of [...this.calls]) this.step(call, from, elapsedMs);
 
@@ -286,10 +297,48 @@ export class Switchboard {
     if (call.remainingMs <= 0) this.lose(call, 'patience');
   }
 
+  get handsetOffHook(): boolean {
+    return this.archivistOffHook;
+  }
+
+  /** Le téléphone de l'étage sonne : le standardiste l'appelle, l'archiviste n'a pas décroché. */
+  get upstairsRinging(): boolean {
+    return !this.archivistOffHook && this.elapsed < this.upstairsRingingUntil;
+  }
+
+  /**
+   * La ligne 100 est ouverte (§8.1) : une paire est branchée sur la 100, l'archiviste a
+   * décroché, et la clé de cette paire est levée. On se parle alors dans les deux sens.
+   */
+  line100Open(): boolean {
+    return (
+      this.archivistOffHook &&
+      this.pairs.some((p) => p.key === 'talk' && p.plugs.includes(ARCHIVIST_LINE))
+    );
+  }
+
+  /**
+   * L'archiviste décroche ou raccroche son combiné. Décroché sans que la 100 soit branchée,
+   * il appelle le rez-de-chaussée : l'ampoule 100 clignote comme un appel (§8.2). Quand il
+   * raccroche, le voyant de la fiche branchée sur la 100 s'allume.
+   */
+  setHandset(offHook: boolean): void {
+    if (offHook === this.archivistOffHook) return;
+    this.archivistOffHook = offHook;
+    this.upstairsRingingUntil = 0;
+    const plugged = this.plugIn(ARCHIVIST_LINE);
+    if (plugged) plugged.pair.supervision[plugged.end] = !offHook;
+  }
+
   /** La paire dont la clé est levée, et ce qu'on y entend. */
   headset(): { pair: number | null; hearing: Hearing } {
     const pair = this.pairs.find((p) => p.key === 'talk');
     if (!pair) return { pair: null, hearing: { kind: 'silence' } };
+    if (pair.plugs.includes(ARCHIVIST_LINE)) {
+      if (this.line100Open()) return { pair: pair.id, hearing: { kind: 'archivist' } };
+      if (this.upstairsRinging) return { pair: pair.id, hearing: { kind: 'ringback' } };
+      return { pair: pair.id, hearing: { kind: 'silence' } };
+    }
     const call = this.callOnPair(pair);
     if (!call) return { pair: pair.id, hearing: { kind: 'silence' } };
     switch (call.status) {
@@ -344,10 +393,19 @@ export class Switchboard {
   private ring(pair: CordPair): void {
     // La clé abaissée pour sonner revient seule au milieu.
     pair.key = 'rest';
+    if (pair.plugs.includes(ARCHIVIST_LINE)) {
+      // Sonner l'étage (§5.1) : le téléphone de l'archiviste sonne quelques instants.
+      if (!this.archivistOffHook) {
+        this.upstairsRingingUntil =
+          this.elapsed + BALANCE.ringsBeforeAbsent * BALANCE.ringIntervalMs;
+        this.onEvent({ type: 'upstairsRinging' });
+      }
+      return;
+    }
     const call = this.callOnPair(pair);
     if (call?.status !== 'held' && call?.status !== 'unreachable') return;
     const target = pair.plugs.find((line) => line !== null && line !== call.callerLine);
-    // Faire sonner l'étage passe par la ligne 100 (#17) ; une fiche seule ne sonne rien.
+    // Une fiche seule ne sonne rien.
     if (target === undefined || target === null || target === ARCHIVIST_LINE) return;
 
     call.protesting = false;
