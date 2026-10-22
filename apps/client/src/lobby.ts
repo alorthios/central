@@ -1,5 +1,6 @@
 import type { JoinRefusal, Role } from '@allo-central/shared';
 import { devMode } from './dev.ts';
+import { KEY_PHRASE } from './help.ts';
 import type { Connection } from './net.ts';
 
 export interface Joined {
@@ -51,6 +52,7 @@ export function mountLobby(
   main.innerHTML = `
     <h1>Allô Central</h1>
     <p class="tagline">Un standard téléphonique, une petite ville, 1953. Deux joueurs, deux étages.</p>
+    <p class="key-phrase"></p>
     <p class="warning"><strong>Chacun dans sa pièce.</strong> Ne vous parlez qu'à travers le jeu : tout l'intérêt est là.</p>
     <section aria-labelledby="create-title">
       <h2 id="create-title">Créer une partie</h2>
@@ -73,6 +75,7 @@ export function mountLobby(
   root.replaceChildren(main);
 
   const $ = <T extends HTMLElement>(selector: string) => main.querySelector(selector) as T;
+  $('.key-phrase').textContent = `« ${KEY_PHRASE} »`;
   const error = $<HTMLParagraphElement>('.error');
   const codeInput = $<HTMLInputElement>('#code');
   const buttons = [$<HTMLButtonElement>('#create'), $<HTMLButtonElement>('#join')];

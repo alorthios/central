@@ -10,6 +10,7 @@ import { dayControls } from '../day.ts';
 import type { Joined } from '../lobby.ts';
 import { lineChat } from '../line100.ts';
 import type { Connection } from '../net.ts';
+import { memoButton } from '../help.ts';
 import { roomBadge } from '../room.ts';
 import { CordsView } from './cords.ts';
 import { PanelView } from './panel.ts';
@@ -82,6 +83,7 @@ export async function mountOperator(
     status,
     bell,
     voiceToggle(),
+    memoButton('operator'),
     roomBadge(connection, joined),
   );
 
