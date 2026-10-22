@@ -5,7 +5,7 @@
 import { BALANCE } from './balance.ts';
 import type { KeyAction, PlugEnd, PlugRefusal } from './game/switchboard.ts';
 import type { DayReport } from './game/score.ts';
-import type { OperatorView } from './game/views.ts';
+import type { ArchivistView, OperatorView } from './game/views.ts';
 
 export const PROTOCOL_VERSION = 6;
 
@@ -16,9 +16,30 @@ export const MAX_SPEED = 60;
 export type Notice = 'busy' | 'absent' | 'wrongNumber';
 
 export type Role = 'operator' | 'archivist';
+export const ROLES: readonly Role[] = ['operator', 'archivist'];
+
+/** Le siège d'un rôle dans une salle : libre, occupé par un joueur connecté, ou en attente de son retour. */
+export type Presence = 'empty' | 'connected' | 'away';
+
+export type JoinRefusal = 'unknownRoom' | 'roomFull';
+
+/** Code de salle : quatre lettres, sans I ni O pour éviter la confusion avec 1 et 0. */
+export const ROOM_CODE_PATTERN = /^[A-HJ-NP-Z]{4}$/;
 
 export type ServerMessage =
   | { type: 'welcome'; protocolVersion: number }
+  /** `token` permet de reprendre sa place après une déconnexion. */
+  | { type: 'roomJoined'; code: string; role: Role; token: string }
+  | { type: 'joinRefused'; reason: JoinRefusal }
+  | {
+      type: 'roomState';
+      code: string;
+      players: Record<Role, Presence>;
+      /** Une journée est en cours ; en pause tant qu'un joueur manque. */
+      playing: boolean;
+      paused: boolean;
+    }
+  | { type: 'archivistView'; view: ArchivistView }
   | { type: 'dayStarted'; seed: number; dayIndex: number; dayName: string }
   | { type: 'operatorView'; view: OperatorView }
   | { type: 'plugRefused'; pair: number; end: PlugEnd; line: number; reason: PlugRefusal }
@@ -26,12 +47,14 @@ export type ServerMessage =
   | { type: 'dayEnded'; report: DayReport };
 
 /**
- * `startDay` lance une journée en solo, rôle standardiste : c'est provisoire, en attendant
- * les salles de jeu à deux (#9). Les autres messages sont des intentions que le serveur
- * valide.
+ * On crée une salle en choisissant son rôle, ou on la rejoint avec son code (et son jeton
+ * pour reprendre sa place). Dans une salle, `startDay` lance une journée ; les autres
+ * messages sont des intentions que le serveur valide.
  */
 export type ClientMessage =
   | { type: 'ping' }
+  | { type: 'createRoom'; role: Role }
+  | { type: 'joinRoom'; code: string; token: string | null }
   | { type: 'startDay'; seed: number; dayIndex: number; speed: number }
   | { type: 'plug'; pair: number; end: PlugEnd; line: number }
   | { type: 'unplug'; pair: number; end: PlugEnd }
@@ -58,6 +81,18 @@ export function parseClientMessage(raw: string): ClientMessage | null {
       return { type: 'ping' };
     case 'whichOne':
       return { type: 'whichOne' };
+    case 'createRoom': {
+      const { role } = message;
+      return ROLES.includes(role as Role) ? { type: 'createRoom', role: role as Role } : null;
+    }
+    case 'joinRoom': {
+      const { code, token } = message;
+      if (typeof code !== 'string') return null;
+      const normalized = code.trim().toUpperCase();
+      if (!ROOM_CODE_PATTERN.test(normalized)) return null;
+      if (token !== null && (typeof token !== 'string' || token.length > 64)) return null;
+      return { type: 'joinRoom', code: normalized, token };
+    }
     case 'startDay': {
       const { seed, dayIndex, speed = 1 } = message;
       if (!Number.isSafeInteger(seed) || !Number.isInteger(dayIndex)) return null;

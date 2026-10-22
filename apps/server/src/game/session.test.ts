@@ -54,14 +54,14 @@ describe('GameSession', () => {
   });
 
   it('applique les branchements et renvoie la vue aussitôt', () => {
-    const { session, messages, views } = start();
+    const { session, views } = start();
     const call = session.schedule[0];
     if (!call) throw new Error('planning vide');
     vi.advanceTimersByTime(call.at + 100);
 
-    const before = messages.length;
+    const before = views().length;
     session.plug(0, 0, call.callerLine);
-    expect(messages.length).toBe(before + 1);
+    expect(views().length).toBe(before + 1);
     expect(views().at(-1)?.pairs[0]?.plugs[0]?.line).toBe(call.callerLine);
     expect(
       views()

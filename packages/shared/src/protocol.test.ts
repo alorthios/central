@@ -59,3 +59,27 @@ describe('parseClientMessage : clés', () => {
     expect(parseClientMessage('{"type":"key","pair":2,"action":"down"}')).toBeNull();
   });
 });
+
+describe('parseClientMessage : salles', () => {
+  it('accepte la création et la jonction, code normalisé', () => {
+    expect(parseClientMessage('{"type":"createRoom","role":"archivist"}')).toEqual({
+      type: 'createRoom',
+      role: 'archivist',
+    });
+    expect(parseClientMessage('{"type":"joinRoom","code":" abcd ","token":null}')).toEqual({
+      type: 'joinRoom',
+      code: 'ABCD',
+      token: null,
+    });
+  });
+
+  it.each([
+    '{"type":"createRoom","role":"meneur"}',
+    '{"type":"joinRoom","code":"ABC","token":null}',
+    '{"type":"joinRoom","code":"ABIO","token":null}',
+    '{"type":"joinRoom","code":"ABCD"}',
+    '{"type":"joinRoom","code":"ABCD","token":42}',
+  ])('rejette %s', (raw) => {
+    expect(parseClientMessage(raw)).toBeNull();
+  });
+});

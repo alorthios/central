@@ -35,7 +35,7 @@ describe('serveur', () => {
     expect(JSON.parse(message)).toEqual({ type: 'welcome', protocolVersion: PROTOCOL_VERSION });
   });
 
-  it('lance une journée en solo et envoie la vue du standardiste', async () => {
+  it('crée une salle, lance une journée et envoie la vue du standardiste', async () => {
     const socket = new WebSocket(`ws://${base}/ws`);
     const received: ServerMessage[] = [];
     await new Promise<void>((resolve, reject) => {
@@ -43,6 +43,9 @@ describe('serveur', () => {
         const message = JSON.parse(String(data)) as ServerMessage;
         received.push(message);
         if (message.type === 'welcome') {
+          socket.send(JSON.stringify({ type: 'createRoom', role: 'operator' }));
+        }
+        if (message.type === 'roomJoined') {
           socket.send(JSON.stringify({ type: 'startDay', seed: 1953, dayIndex: 0 }));
         }
         if (message.type === 'operatorView') resolve();
@@ -51,11 +54,9 @@ describe('serveur', () => {
     });
     socket.close();
 
-    expect(received.map((m) => m.type).slice(0, 3)).toEqual([
-      'welcome',
-      'dayStarted',
-      'operatorView',
-    ]);
+    const types = received.map((m) => m.type);
+    expect(types.slice(0, 3)).toEqual(['welcome', 'roomJoined', 'roomState']);
+    expect(types).toContain('dayStarted');
   });
 
   it('ignore les messages invalides sans couper la connexion', async () => {

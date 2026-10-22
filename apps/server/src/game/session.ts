@@ -4,6 +4,7 @@ import {
   type DayConfig,
   type KeyAction,
   type PlugEnd,
+  type Role,
   type ScheduledCall,
   type ServerMessage,
   Switchboard,
@@ -13,6 +14,7 @@ import {
   deriveSeed,
   generateRequests,
   dayReport,
+  archivistView,
   operatorView,
 } from '@allo-central/shared';
 import { GameClock } from './clock.ts';
@@ -21,7 +23,8 @@ import { DaySimulation } from './day.ts';
 export interface SessionOptions {
   seed: number;
   dayIndex: number;
-  send: (message: ServerMessage) => void;
+  /** Envoie un message à un rôle, ou aux deux si `to` est absent. */
+  send: (message: ServerMessage, to?: Role) => void;
   clock?: GameClock;
   /** Accélération du temps de jeu, quand aucune horloge n'est fournie. */
   speed?: number;
@@ -40,7 +43,7 @@ export class GameSession {
   private readonly day: DaySimulation;
   private readonly requests: CallRequest[];
   private readonly clock: GameClock;
-  private readonly send: (message: ServerMessage) => void;
+  private readonly send: (message: ServerMessage, to?: Role) => void;
   private readonly tickMs: number;
   private readonly seed: number;
   private readonly dayIndex: number;
@@ -79,8 +82,7 @@ export class GameSession {
 
   start(): void {
     if (this.timer) return;
-    const name = BALANCE.week[this.dayIndex]?.name ?? '';
-    this.send({ type: 'dayStarted', seed: this.seed, dayIndex: this.dayIndex, dayName: name });
+    this.send(this.dayStarted());
     this.clock.start();
     this.timer = setInterval(() => this.tick(), this.tickMs);
     this.tick();
@@ -91,11 +93,39 @@ export class GameSession {
     this.timer = null;
   }
 
+  /** Un joueur revient en pleine journée : il retrouve l'annonce de la journée et sa vue. */
+  rejoin(role: Role): void {
+    this.send(this.dayStarted(), role);
+    this.sendView();
+  }
+
+  private dayStarted(): ServerMessage {
+    return {
+      type: 'dayStarted',
+      seed: this.seed,
+      dayIndex: this.dayIndex,
+      dayName: this.config.name,
+    };
+  }
+
+  /** Un joueur s'est déconnecté : le temps de jeu s'arrête jusqu'à son retour (§17). */
+  pause(): void {
+    this.clock.pause();
+  }
+
+  resume(): void {
+    this.clock.resume();
+  }
+
+  get paused(): boolean {
+    return this.running && !this.clock.running;
+  }
+
   plug(pair: number, end: PlugEnd, line: number): void {
     if (!this.running) return;
     this.advance();
     const reason = this.board.plug(pair, end, line);
-    if (reason) this.send({ type: 'plugRefused', pair, end, line, reason });
+    if (reason) this.send({ type: 'plugRefused', pair, end, line, reason }, 'operator');
     this.sendView();
   }
 
@@ -109,9 +139,9 @@ export class GameSession {
   /** Ce que le standardiste entend d'un geste, au-delà de ce que montre le panneau. */
   private notify(event: SwitchboardEvent): void {
     if (event.type === 'callUnreachable') {
-      this.send({ type: 'notice', notice: event.reason, line: event.call.callerLine });
+      this.send({ type: 'notice', notice: event.reason, line: event.call.callerLine }, 'operator');
     } else if (event.type === 'wrongConnection') {
-      this.send({ type: 'notice', notice: 'wrongNumber', line: event.line });
+      this.send({ type: 'notice', notice: 'wrongNumber', line: event.line }, 'operator');
     }
   }
 
@@ -137,8 +167,10 @@ export class GameSession {
     this.day.advanceTo(elapsed);
   }
 
+  /** Chaque joueur ne reçoit que la vue de son rôle. */
   private sendView(): void {
-    this.send({ type: 'operatorView', view: operatorView(this.board) });
+    this.send({ type: 'operatorView', view: operatorView(this.board) }, 'operator');
+    this.send({ type: 'archivistView', view: archivistView(this.board) }, 'archivist');
   }
 
   private tick(): void {
