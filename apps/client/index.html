@@ -371,6 +371,136 @@
         font-size: calc(14px * var(--desk-scale));
         font-weight: 700;
       }
+      .line100 {
+        position: fixed;
+        left: 16px;
+        bottom: 16px;
+        box-sizing: border-box;
+        width: min(340px, calc(100% - 32px));
+        padding: 12px;
+        border: 1px solid #5a4430;
+        border-radius: 12px;
+        background: #221912f2;
+      }
+      .line100.open {
+        border-color: #c9a44c;
+        box-shadow: 0 0 0 2px #c9a44c55;
+      }
+      .line100 header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 6px;
+      }
+      .line100 .line-state {
+        color: #bfaf92;
+        font-size: 14px;
+      }
+      .line100.open .line-state {
+        color: #c9a44c;
+        font-weight: 600;
+      }
+      .line100 ol {
+        max-height: 180px;
+        margin: 0 0 8px;
+        padding: 0;
+        overflow-y: auto;
+        list-style: none;
+        font-size: 15px;
+      }
+      .line100 li {
+        display: flex;
+        flex-direction: column;
+        padding: 4px 0;
+      }
+      .line100 li.mine {
+        color: #d8cbb2;
+      }
+      .line100 .who {
+        color: #bfaf92;
+        font-size: 12px;
+      }
+      .line100 form {
+        display: flex;
+        gap: 6px;
+      }
+      .line100 input {
+        flex: 1;
+        min-width: 0;
+        min-height: 40px;
+        padding: 4px 10px;
+        border: 1px solid #5a4430;
+        border-radius: 8px;
+        background: #17110d;
+        color: #f3eada;
+        font: inherit;
+      }
+      .line100 button,
+      .phone button {
+        min-height: 40px;
+        padding: 4px 14px;
+        border: 1px solid #c9a44c;
+        border-radius: 8px;
+        background: #3a2a0c;
+        color: #f3eada;
+        font: inherit;
+        cursor: pointer;
+      }
+      .line100 :disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      .side {
+        position: fixed;
+        right: 16px;
+        bottom: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        width: min(340px, calc(100% - 32px));
+      }
+      .side .line100 {
+        position: static;
+        width: auto;
+      }
+      .phone {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 12px;
+        border: 1px solid #5a4430;
+        border-radius: 12px;
+        background: #221912f2;
+      }
+      .phone p {
+        margin: 0;
+        font-size: 15px;
+      }
+      .phone[data-state='ringing'] {
+        border-color: #f0604c;
+        animation: phone-ring 0.5s steps(1) infinite;
+      }
+      .phone[data-state='offHook'] .primary {
+        background: #c9a44c;
+        color: #17110d;
+      }
+      @keyframes phone-ring {
+        50% {
+          background: #5e2a22;
+        }
+      }
+      @media (min-width: 1000px) {
+        body:has(.side) .desk {
+          margin-right: 372px;
+        }
+      }
+      @media (max-width: 999px) {
+        .side {
+          position: static;
+          width: auto;
+          margin: 0 16px 16px;
+        }
+      }
       .desk-empty {
         max-width: 560px;
         margin: 64px auto;

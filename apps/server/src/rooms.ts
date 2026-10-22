@@ -98,8 +98,17 @@ export class Room {
       this.broadcastState();
       return;
     }
-    // Seul le standardiste touche au panneau.
-    if (role !== 'operator' || !this.session) return;
+    if (!this.session) return;
+    if (message.type === 'say') {
+      this.session.say(role, message.text);
+      return;
+    }
+    // Le combiné est à l'étage ; le panneau, au rez-de-chaussée.
+    if (message.type === 'handset') {
+      if (role === 'archivist') this.session.handset(message.offHook);
+      return;
+    }
+    if (role !== 'operator') return;
     switch (message.type) {
       case 'plug':
         this.session.plug(message.pair, message.end, message.line);

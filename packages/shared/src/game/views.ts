@@ -1,3 +1,4 @@
+import { ARCHIVIST_LINE } from '../city/generate.ts';
 import type { Hearing, KeyPosition, LiveCall, Switchboard } from './switchboard.ts';
 
 /** États d'ampoule du GDD §6.1. */
@@ -37,18 +38,43 @@ export interface OperatorView {
   lamps: LampView[];
   pairs: PairView[];
   headset: { pair: number | null; hearing: Hearing };
+  /** La ligne 100 est ouverte : la zone de texte apparaît (§8.5). */
+  line100Open: boolean;
 }
 
+/** Le téléphone de l'étage : au repos, qui sonne, ou combiné décroché. */
+export type PhoneState = 'idle' | 'ringing' | 'offHook';
+
 /**
- * Ce que voit l'archiviste du déroulé de la journée : l'heure, rien du panneau (§4). Ses
- * documents lui arrivent à part, une fois par journée.
+ * Ce que voit l'archiviste du déroulé de la journée : l'heure et son téléphone, rien du
+ * panneau (§4). Ses documents lui arrivent à part, une fois par journée.
  */
 export interface ArchivistView {
   elapsedMs: number;
+  phone: PhoneState;
+  line100Open: boolean;
 }
 
 export function archivistView(board: Switchboard): ArchivistView {
-  return { elapsedMs: Math.round(board.elapsedMs) };
+  return {
+    elapsedMs: Math.round(board.elapsedMs),
+    phone: board.handsetOffHook ? 'offHook' : board.upstairsRinging ? 'ringing' : 'idle',
+    line100Open: board.line100Open(),
+  };
+}
+
+/**
+ * L'ampoule de la 100 : elle clignote quand l'étage appelle sans que personne ne lui ait
+ * répondu (§8.2), reste fixe une fois branchée, scintille quand on se parle.
+ */
+function archivistLamp(board: Switchboard): LampView | null {
+  if (!board.handsetOffHook) return null;
+  const state: LampState = !board.plugIn(ARCHIVIST_LINE)
+    ? 'ringing'
+    : board.line100Open()
+      ? 'flicker'
+      : 'steady';
+  return { line: ARCHIVIST_LINE, state, cap: 'white', urgency: 0 };
 }
 
 export function operatorView(board: Switchboard): OperatorView {
@@ -98,10 +124,14 @@ export function operatorView(board: Switchboard): OperatorView {
     key: pair.key,
   }));
 
+  const upstairs = archivistLamp(board);
+  if (upstairs) lamps.set(ARCHIVIST_LINE, upstairs);
+
   return {
     elapsedMs: Math.round(board.elapsedMs),
     lamps: [...lamps.values()],
     pairs,
     headset: board.headset(),
+    line100Open: board.line100Open(),
   };
 }

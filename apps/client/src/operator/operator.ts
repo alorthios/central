@@ -8,11 +8,12 @@ import {
 import { Application, Container } from 'pixi.js';
 import { dayControls } from '../day.ts';
 import type { Joined } from '../lobby.ts';
+import { lineChat } from '../line100.ts';
 import type { Connection } from '../net.ts';
 import { roomBadge } from '../room.ts';
 import { CordsView } from './cords.ts';
 import { PanelView } from './panel.ts';
-import { sounds } from './sounds.ts';
+import { sounds } from '../sounds.ts';
 
 /** Hauteur réservée en haut de l'écran : le bandeau et le casque. */
 const HUD_HEIGHT = 112;
@@ -27,6 +28,8 @@ function hearingText(hearing: Hearing): string {
       return 'Ça sonne chez le correspondant…';
     case 'conversation':
       return 'Ils se parlent. Vous pouvez rabaisser la clé.';
+    case 'archivist':
+      return 'Ligne 100 ouverte : vous êtes en ligne avec l’étage.';
     case 'informed':
       return `Vous prévenez le client (${UNREACHABLE[hearing.reason]}) : « Bon, je rappellerai. »`;
     case 'silence':
@@ -85,7 +88,8 @@ export async function mountOperator(
 
   const app = new Application();
   await app.init({ resizeTo: window, background: '#17110d', antialias: true });
-  root.replaceChildren(hud, headset, app.canvas);
+  const chat = lineChat(connection, 'operator');
+  root.replaceChildren(hud, headset, app.canvas, chat.element);
 
   const board = new Container();
   const panel = new PanelView();
@@ -152,6 +156,7 @@ export async function mountOperator(
           heard.textContent = headsetText(message.view);
         }
         whichOne.hidden = !canAskWhichOne(message.view);
+        chat.setOpen(message.view.line100Open);
         break;
       case 'notice':
         if (message.notice === 'busy') sounds.busy();

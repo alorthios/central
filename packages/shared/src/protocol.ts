@@ -41,6 +41,8 @@ export type ServerMessage =
       paused: boolean;
     }
   | { type: 'archivistView'; view: ArchivistView }
+  /** Un message texte sur la ligne 100, relayé aux deux joueurs quand elle est ouverte (§8.5). */
+  | { type: 'line100Message'; from: Role; text: string; at: number }
   /** Les documents de l'archiviste, envoyés à lui seul en début de journée. */
   | { type: 'archivistDesk'; desk: ArchivistDesk }
   | { type: 'dayStarted'; seed: number; dayIndex: number; dayName: string }
@@ -62,7 +64,14 @@ export type ClientMessage =
   | { type: 'plug'; pair: number; end: PlugEnd; line: number }
   | { type: 'unplug'; pair: number; end: PlugEnd }
   | { type: 'key'; pair: number; action: KeyAction }
-  | { type: 'whichOne' };
+  | { type: 'whichOne' }
+  /** L'archiviste décroche ou raccroche son combiné. */
+  | { type: 'handset'; offHook: boolean }
+  /** Un message texte sur la ligne 100 : il ne passe que si la ligne est ouverte. */
+  | { type: 'say'; text: string };
+
+/** Longueur maximale d'un message sur la ligne 100. */
+export const MAX_SAY_LENGTH = 200;
 
 const isEnd = (value: unknown): value is PlugEnd => value === 0 || value === 1;
 const isKeyAction = (value: unknown): value is KeyAction =>
@@ -84,6 +93,15 @@ export function parseClientMessage(raw: string): ClientMessage | null {
       return { type: 'ping' };
     case 'whichOne':
       return { type: 'whichOne' };
+    case 'handset':
+      return typeof message.offHook === 'boolean'
+        ? { type: 'handset', offHook: message.offHook }
+        : null;
+    case 'say': {
+      if (typeof message.text !== 'string') return null;
+      const text = message.text.trim().slice(0, MAX_SAY_LENGTH);
+      return text ? { type: 'say', text } : null;
+    }
     case 'createRoom': {
       const { role } = message;
       return ROLES.includes(role as Role) ? { type: 'createRoom', role: role as Role } : null;

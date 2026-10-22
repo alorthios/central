@@ -176,3 +176,34 @@ describe('RoomManager', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 });
+
+describe('RoomManager : ligne 100', () => {
+  it('relaie le texte seulement ligne ouverte, et seul l’archiviste a le combiné', () => {
+    vi.useFakeTimers();
+    const rooms = new RoomManager();
+    const alice = player();
+    const bob = player();
+    rooms.handle(alice, { type: 'createRoom', role: 'operator' });
+    rooms.handle(bob, { type: 'joinRoom', code: joined(alice).code, token: null });
+    rooms.handle(alice, { type: 'startDay', seed: 1953, dayIndex: 0, speed: 1 });
+
+    rooms.handle(alice, { type: 'say', text: 'Allô ?' });
+    expect(bob.last('line100Message')).toBeUndefined();
+
+    rooms.handle(alice, { type: 'handset', offHook: true });
+    rooms.handle(alice, { type: 'plug', pair: 0, end: 0, line: 100 });
+    rooms.handle(alice, { type: 'key', pair: 0, action: 'talk' });
+    rooms.handle(alice, { type: 'say', text: 'Allô ?' });
+    expect(bob.last('line100Message')).toBeUndefined();
+
+    rooms.handle(bob, { type: 'handset', offHook: true });
+    rooms.handle(alice, { type: 'say', text: 'Le docteur près de l’église ?' });
+    rooms.handle(bob, { type: 'say', text: 'Morel, 134.' });
+    expect(bob.received.filter((m) => m.type === 'line100Message')).toEqual([
+      { type: 'line100Message', from: 'operator', text: 'Le docteur près de l’église ?', at: 0 },
+      { type: 'line100Message', from: 'archivist', text: 'Morel, 134.', at: 0 },
+    ]);
+    rooms.closeAll();
+    vi.useRealTimers();
+  });
+});

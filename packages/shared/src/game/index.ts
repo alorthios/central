@@ -30,6 +30,7 @@ export {
   type LampView,
   type OperatorView,
   type PairView,
+  type PhoneState,
   type PlugView,
   operatorView,
 } from './views.ts';
