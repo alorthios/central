@@ -6,6 +6,7 @@ import {
   type ScheduledCall,
   type ServerMessage,
   Switchboard,
+  type SwitchboardEvent,
   generateCity,
   createRng,
   deriveSeed,
@@ -45,7 +46,10 @@ export class GameSession {
     const config = BALANCE.week[dayIndex];
     if (!config) throw new Error(`GameSession : journée ${dayIndex} inconnue`);
     this.seed = seed;
-    this.board = new Switchboard(undefined, createRng(deriveSeed(seed, `switchboard:${dayIndex}`)));
+    this.board = new Switchboard(
+      (event) => this.notify(event),
+      createRng(deriveSeed(seed, `switchboard:${dayIndex}`)),
+    );
     this.dayIndex = dayIndex;
     this.send = send;
     this.clock = clock ?? new GameClock();
@@ -87,6 +91,22 @@ export class GameSession {
     const reason = this.board.plug(pair, end, line);
     if (reason) this.send({ type: 'plugRefused', pair, end, line, reason });
     this.sendView();
+  }
+
+  whichOne(): void {
+    if (!this.running) return;
+    this.advance();
+    this.board.askWhichOne();
+    this.sendView();
+  }
+
+  /** Ce que le standardiste entend d'un geste, au-delà de ce que montre le panneau. */
+  private notify(event: SwitchboardEvent): void {
+    if (event.type === 'callUnreachable') {
+      this.send({ type: 'notice', notice: event.reason, line: event.call.callerLine });
+    } else if (event.type === 'wrongConnection') {
+      this.send({ type: 'notice', notice: 'wrongNumber', line: event.line });
+    }
   }
 
   key(pair: number, action: KeyAction): void {

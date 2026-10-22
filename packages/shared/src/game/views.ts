@@ -58,6 +58,7 @@ export function operatorView(board: Switchboard): OperatorView {
         break;
       case 'held':
       case 'connecting':
+      case 'unreachable':
         light(call.callerLine, 'steady', call, true);
         break;
       case 'talking':

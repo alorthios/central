@@ -51,6 +51,9 @@ export function createApp({ clientDist }: AppOptions = {}): Server {
         case 'key':
           session?.key(message.pair, message.action);
           break;
+        case 'whichOne':
+          session?.whichOne();
+          break;
       }
     });
     socket.on('close', () => session?.stop());
