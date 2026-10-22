@@ -2,7 +2,7 @@
 <html lang="fr">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Allô Central</title>
     <style>
       body:has(> canvas) {
@@ -788,6 +788,46 @@
       }
       .hud .dev-link {
         color: #c9a44c;
+      }
+      /* Tablette : pas de zoom au double toucher sur les commandes, pas de menu ni de
+         sélection à l'appui long sur le panneau, pas de « tirer pour rafraîchir ». */
+      button,
+      select,
+      input,
+      a,
+      label {
+        touch-action: manipulation;
+      }
+      canvas {
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+      body:has(> canvas) {
+        overscroll-behavior: none;
+      }
+      /* Safari ignore le fond d'une liste déroulante native : on la dessine nous-mêmes. */
+      .hud select {
+        -webkit-appearance: none;
+        appearance: none;
+        padding-right: 30px;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8'><path d='M1 1l5 5 5-5' fill='none' stroke='%23c9a44c' stroke-width='2'/></svg>");
+        background-repeat: no-repeat;
+        background-position: right 10px center;
+      }
+      /* Marges de sécurité de l'écran (encoches, barre d'accueil de l'iPad). */
+      .hud {
+        padding-top: max(8px, env(safe-area-inset-top));
+        padding-left: max(16px, env(safe-area-inset-left));
+        padding-right: max(16px, env(safe-area-inset-right));
+      }
+      .line100 {
+        left: max(16px, env(safe-area-inset-left));
+        bottom: max(16px, env(safe-area-inset-bottom));
+      }
+      .side {
+        right: max(16px, env(safe-area-inset-right));
+        bottom: max(16px, env(safe-area-inset-bottom));
       }
     </style>
   </head>

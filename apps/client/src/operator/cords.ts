@@ -6,7 +6,7 @@ import {
   type PlugEnd,
 } from '@allo-central/shared';
 import { Container, type FederatedPointerEvent, Graphics, Rectangle } from 'pixi.js';
-import type { PanelView } from './panel.ts';
+import { type PanelView, TOUCH_SNAP_RADIUS } from './panel.ts';
 import { type Toggle, skin } from './skin.ts';
 
 const SHELF_GAP = 16;
@@ -16,6 +16,8 @@ const PLUG_SPREAD = 18;
 const PLUG_RADIUS = 10;
 const KEY_TRAVEL = 18;
 const RING_KNOB_MS = 350;
+/** Au doigt, la fiche se tient au-dessus du doigt, qui sinon la cacherait. */
+const TOUCH_LIFT = 34;
 
 export interface CordActions {
   plug(pair: number, end: PlugEnd, line: number): void;
@@ -56,6 +58,9 @@ export class CordsView {
   private readonly keys: Key[] = [];
   private pairs: PairView[] = [];
   private dragging: Plug | null = null;
+  /** Le doigt ou la souris qui tient la fiche. */
+  private pointerId: number | null = null;
+  private touch = false;
 
   constructor(panel: PanelView, actions: CordActions) {
     this.panel = panel;
@@ -180,18 +185,32 @@ export class CordsView {
   }
 
   private startDrag(plug: Plug, event: FederatedPointerEvent): void {
+    // Une fiche à la fois : un second doigt posé pendant le geste est ignoré.
+    if (this.dragging) return;
     this.dragging = plug;
+    this.pointerId = event.pointerId;
+    this.touch = event.pointerType === 'touch';
     plug.sprite.cursor = 'grabbing';
     // La fiche saisie passe au-dessus des autres.
     plug.sprite.parent?.addChild(plug.sprite);
     this.moveDrag(event);
   }
 
-  private moveDrag(event: FederatedPointerEvent): void {
-    if (!this.dragging) return;
+  /** Où est la fiche : sous la souris, ou un peu au-dessus du doigt pour rester visible. */
+  private dragPoint(event: FederatedPointerEvent): { x: number; y: number } {
     const p = this.container.toLocal(event.global);
+    return this.touch ? { x: p.x, y: p.y - TOUCH_LIFT } : { x: p.x, y: p.y };
+  }
+
+  private jackUnder(p: { x: number; y: number }): number | null {
+    return this.panel.jackAt(p.x, p.y, this.touch ? TOUCH_SNAP_RADIUS : undefined);
+  }
+
+  private moveDrag(event: FederatedPointerEvent): void {
+    if (!this.dragging || event.pointerId !== this.pointerId) return;
+    const p = this.dragPoint(event);
     this.dragging.sprite.position.set(p.x, p.y);
-    const line = this.panel.jackAt(p.x, p.y);
+    const line = this.jackUnder(p);
     this.target.clear();
     if (line !== null) {
       const jack = this.panel.jackPosition(line);
@@ -202,13 +221,14 @@ export class CordsView {
 
   private endDrag(event: FederatedPointerEvent): void {
     const plug = this.dragging;
-    if (!plug) return;
+    if (!plug || event.pointerId !== this.pointerId) return;
+    const p = this.dragPoint(event);
+    const line = this.jackUnder(p);
     this.dragging = null;
+    this.pointerId = null;
     plug.sprite.cursor = 'grab';
     this.target.clear();
 
-    const p = this.container.toLocal(event.global);
-    const line = this.panel.jackAt(p.x, p.y);
     const current = this.plugView(plug)?.line ?? null;
     if (line !== null && line !== current) {
       this.actions.plug(plug.pair, plug.end, line);
